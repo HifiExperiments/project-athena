@@ -236,7 +236,7 @@ void MixerAvatar::requestCurrentOwnership() {
     QNetworkRequest networkRequest;
     networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
     networkRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    QUrl requestURL = MetaverseAPI::METAVERSE_SERVER_URL();
+    QUrl requestURL = MetaverseAPI::getCurrentMetaverseServerURL();
     requestURL.setPath(POP_MARKETPLACE_API);
     networkRequest.setUrl(requestURL);
 

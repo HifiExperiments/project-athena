@@ -26,13 +26,12 @@ namespace MetaverseAPI {
     // or you can pass a custom URL via the env variable
     QUrl getCurrentMetaverseServerURL() {
         QUrl selectedMetaverseURL;
-        QVariant tempURLSettingString;
+        //QVariant tempURLSettingString;
 
-        // GOOD NIGHT GREETING THOYS FROM THE NETHERLANDS
-        Setting::Handle<QString> tempURLSettingString{ "private/selectedMetaverseURL",
+        Setting::Handle<QUrl> selectedMetaverseURLSetting { "private/selectedMetaverseURL",
                                                        NetworkingConstants::METAVERSE_SERVER_URL_STABLE };
 
-        selectedMetaverseURL = QUrl(tempURLSettingString.get());
+        selectedMetaverseURL = QUrl(selectedMetaverseURLSetting.get());
         // QVariant tempURLSetting = Setting::Handle<QVariant>("private/selectedMetaverseURL").get();
 
         qDebug() << selectedMetaverseURL << "LOOK HERE!";
@@ -41,8 +40,8 @@ namespace MetaverseAPI {
         if (QProcessEnvironment::systemEnvironment().contains(HIFI_METAVERSE_URL_ENV)) {
             serverURL = QUrl(QProcessEnvironment::systemEnvironment().value(HIFI_METAVERSE_URL_ENV));
 
-        } else if (!tempURLSettingString.isNull()) {
-            serverURL = tempURLSettingString;
+        } else if (!selectedMetaverseURLSetting.isSet()) {
+            serverURL = selectedMetaverseURL;
 
         } else {
             serverURL = NetworkingConstants::METAVERSE_SERVER_URL_STABLE;
