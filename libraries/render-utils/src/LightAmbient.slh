@@ -8,10 +8,17 @@
 
 <@include render-utils/ShaderConstants.h@>
 <@func declareSkyboxMap()@>
+
+<@include graphics/skybox.slh@>
+
 // declareSkyboxMap
 LAYOUT(binding=RENDER_UTILS_TEXTURE_SKYBOX) uniform samplerCube skyboxMap;
 
-vec4 evalSkyboxLight(vec3 direction, float lod) {
+LAYOUT(binding=RENDER_UTILS_BUFFER_SKYBOX_PARAMS) uniform skyboxBuffer {
+    Skybox skybox;
+};
+
+vec3 evalSkyboxLight(vec3 direction, float lod) {
     // textureQueryLevels is not available until #430, so we require explicit lod
     // float mipmapLevel = lod * textureQueryLevels(skyboxMap);
 
@@ -22,7 +29,9 @@ vec4 evalSkyboxLight(vec3 direction, float lod) {
     lod = max(lod, filterLod-2);
 #endif
 
-    return textureLod(skyboxMap, direction, lod);
+    vec3 skyboxTexel = textureLod(skyboxMap, direction, lod).rgb;
+    vec3 skyboxColor = skybox.color.rgb;
+    return evalSkyboxColor(skyboxTexel, skyboxColor, skybox.color.a).rgb;
 }
 <@endfunc@>
 
@@ -62,7 +71,7 @@ vec3 evalAmbientSpecularIrradiance(LightAmbient ambient, SurfaceData surface, ve
             float lod = getMipLevelFromRoughness(surface.roughness, levelCount);
             lod = max(lod, 0.0);
 
-            specularLight = evalSkyboxLight(lightDir, lod).xyz;
+            specularLight = evalSkyboxLight(lightDir, lod);
         }
     <@endif@>
         <@if supportIfAmbientMapElseAmbientSphere@>

@@ -10,6 +10,8 @@
 //
 #include "Light.h"
 
+#include "Skybox.h"
+
 using namespace graphics;
 
 Light::Light() {
@@ -26,6 +28,7 @@ Light& Light::operator= (const Light& light) {
     _flags = (light._flags);
     _lightSchemaBuffer = (light._lightSchemaBuffer);
     _ambientSchemaBuffer = (light._ambientSchemaBuffer);
+    _skyboxColorSchemaBuffer = (light._skyboxColorSchemaBuffer);
     _transform = (light._transform);
 
     return (*this);
@@ -187,3 +190,15 @@ void Light::setTransform(const glm::mat4& transform) {
     }
 }
 
+void Light::setSkyboxColor(const glm::vec3& color) {
+    _skyboxColorSchemaBuffer.edit().color = color;
+}
+
+void Light::setSkyboxBlend(float blend) {
+    _skyboxColorSchemaBuffer.edit().blend = blend;
+}
+
+const Light::SkyboxColorSchemaBuffer& Light::getSkyboxColorSchemaBuffer() {
+    _skyboxColorSchemaBuffer.edit().blend = Skybox::computeSkyboxBlend(_ambientMap, _skyboxColorSchemaBuffer->color);
+    return _skyboxColorSchemaBuffer;
+}

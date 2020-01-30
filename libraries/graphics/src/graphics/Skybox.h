@@ -50,6 +50,8 @@ public:
 
     const UniformBufferView& getSchemaBuffer() const { return _schemaBuffer; }
 
+    static float computeSkyboxBlend(const gpu::TexturePointer& skyboxTexture, const glm::vec3& skyboxColor);
+
 protected:
     class Schema {
     public:

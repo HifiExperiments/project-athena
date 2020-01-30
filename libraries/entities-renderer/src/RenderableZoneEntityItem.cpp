@@ -503,6 +503,7 @@ void ZoneEntityRenderer::setBloomMode(ComponentMode mode) {
 
 void ZoneEntityRenderer::setSkyboxColor(const glm::vec3& color) {
     editSkybox()->setColor(color);
+    _ambientLight->setSkyboxColor(color);
 }
 
 void ZoneEntityRenderer::setProceduralUserData(const QString& userData) {

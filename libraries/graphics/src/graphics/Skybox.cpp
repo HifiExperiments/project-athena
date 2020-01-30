@@ -42,17 +42,21 @@ void Skybox::setOrientation(const glm::quat& orientation) {
     _orientation.w = -_orientation.w;
 }
 
-void Skybox::updateSchemaBuffer() const {
+float Skybox::computeSkyboxBlend(const gpu::TexturePointer& skyboxTexture, const glm::vec3& skyboxColor) {
     auto blend = 0.0f;
-    if (getCubemap() && getCubemap()->isDefined()) {
+    if (skyboxTexture && skyboxTexture->isDefined()) {
         blend = 0.5f;
 
         // If pitch black neutralize the color
-        if (glm::all(glm::equal(getColor(), glm::vec3(0.0f)))) {
+        if (glm::all(glm::equal(skyboxColor, glm::vec3(0.0f)))) {
             blend = 1.0f;
         }
     }
+    return blend;
+}
 
+void Skybox::updateSchemaBuffer() const {
+    float blend = Skybox::computeSkyboxBlend(getCubemap(), getColor());
     if (blend != _schemaBuffer.get<Schema>().blend) {
         _schemaBuffer.edit<Schema>().blend = blend;
     }

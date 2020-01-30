@@ -160,6 +160,9 @@ public:
 
     void setTransform(const glm::mat4& transform);
 
+    void setSkyboxColor(const glm::vec3& color);
+    void setSkyboxBlend(float blend);
+
     // Light Schema
     class LightSchema {
     public:
@@ -178,11 +181,19 @@ public:
         glm::mat4 transform;
     };
 
+    class SkyboxSchema {
+    public:
+        glm::vec3 color;
+        float blend;
+    };
+
     using LightSchemaBuffer = gpu::StructBuffer<LightSchema>;
     using AmbientSchemaBuffer = gpu::StructBuffer<AmbientSchema>;
+    using SkyboxColorSchemaBuffer = gpu::StructBuffer<SkyboxSchema>;
 
     const LightSchemaBuffer& getLightSchemaBuffer() const { return _lightSchemaBuffer; }
     const AmbientSchemaBuffer& getAmbientSchemaBuffer() const { return _ambientSchemaBuffer; }
+    const SkyboxColorSchemaBuffer& getSkyboxColorSchemaBuffer();
 
 protected:
 
@@ -190,6 +201,7 @@ protected:
 
     LightSchemaBuffer _lightSchemaBuffer;
     AmbientSchemaBuffer _ambientSchemaBuffer;
+    SkyboxColorSchemaBuffer _skyboxColorSchemaBuffer;
 
     Transform _transform;
 

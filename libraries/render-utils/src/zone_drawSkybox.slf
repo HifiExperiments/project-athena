@@ -11,14 +11,12 @@
 <@include zone_draw.slh@>
 <@include render-utils/ShaderConstants.h@>
 
+<@include graphics/skybox.slh@>
+
 // FIXME use declareSkyboxMap from LightAmbient.slh?
 LAYOUT(binding=RENDER_UTILS_TEXTURE_SKYBOX) uniform samplerCube skyboxMap;
 
-struct Skybox {
-    vec4 color;
-};
-
-LAYOUT(binding=RENDER_UTILS_BUFFER_DEBUG_SKYBOX) uniform skyboxBuffer {
+LAYOUT(binding=RENDER_UTILS_BUFFER_SKYBOX_PARAMS) uniform skyboxBuffer {
     Skybox skybox;
 };
 
@@ -32,12 +30,9 @@ void main(void) {
 
     vec3 direction = vec3(getViewInverse() * vec4(spherePos, 0.0));
 
-    vec3 color = skybox.color.rgb;
-
-    // blend is only set if there is a cubemap
-    float check = float(skybox.color.a > 0.0);
-    color = mix(color, texture(skyboxMap, direction).rgb, check);
-    color *= mix(vec3(1.0), skybox.color.rgb, check * float(skybox.color.a < 1.0));
+    vec3 skyboxTexel = texture(skyboxMap, direction).rgb;
+    vec3 skyboxColor = skybox.color.rgb;
+    vec3 color = evalSkyboxColor(skyboxTexel, skyboxColor, skybox.color.a).rgb;
 
     color = color * 1.0 - base.w + base.xyz * base.w;
     const float INV_GAMMA_22 = 1.0 / 2.2;

@@ -193,7 +193,7 @@ void DebugZoneLighting::run(const render::RenderContextPointer& context, const I
             batch.setModelTransform(model);
             if (skyboxStack[i]) {
                 batch.setResourceTexture(ru::Texture::Skybox, skyboxStack[i]->getCubemap());
-                batch.setUniformBuffer(ru::Buffer::DebugSkyboxParams, skyboxStack[i]->getSchemaBuffer());
+                batch.setUniformBuffer(ru::Buffer::SkyboxParams, skyboxStack[i]->getSchemaBuffer());
                 batch.draw(gpu::TRIANGLE_STRIP, 4);
             }
         }

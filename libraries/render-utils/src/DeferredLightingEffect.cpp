@@ -78,6 +78,7 @@ void DeferredLightingEffect::setupKeyLightBatch(const RenderArgs* args, gpu::Bat
 
     if (keyAmbiLight) {
         batch.setUniformBuffer(gr::Buffer::AmbientLight, keyAmbiLight->getAmbientSchemaBuffer());
+        batch.setUniformBuffer(ru::Buffer::SkyboxParams, keyAmbiLight->getSkyboxColorSchemaBuffer());
 
         if (keyAmbiLight->getAmbientMap() ) {
             batch.setResourceTexture(ru::Texture::Skybox, keyAmbiLight->getAmbientMap());
@@ -88,6 +89,7 @@ void DeferredLightingEffect::setupKeyLightBatch(const RenderArgs* args, gpu::Bat
 void DeferredLightingEffect::unsetKeyLightBatch(gpu::Batch& batch) {
     batch.setUniformBuffer(gr::Buffer::KeyLight, nullptr);
     batch.setUniformBuffer(gr::Buffer::AmbientLight, nullptr);
+    batch.setUniformBuffer(ru::Buffer::SkyboxParams, nullptr);
     batch.setResourceTexture(ru::Texture::Skybox, nullptr);
 }
 
@@ -625,6 +627,8 @@ void DefaultLightingSetup::run(const RenderContextPointer& renderContext) {
 
             lp->setAmbientIntensity(0.5f);
             lp->setAmbientMap(_defaultAmbientTexture);
+            lp->setSkyboxColor(glm::vec3(0.0f));
+            lp->setSkyboxBlend(1.0f);
             auto irradianceSH = _defaultAmbientTexture->getIrradiance();
             if (irradianceSH) {
                 lp->setAmbientSphere((*irradianceSH));

@@ -38,7 +38,7 @@ void main(void) {
     float roughness = 0.1;
     float levels = getLightAmbientMapNumMips(lightAmbient);
     float lod = min(((roughness)* levels), levels);
-    vec3 ambientMap = evalSkyboxLight(fragNormal, lod).xyz;
+    vec3 ambientMap = evalSkyboxLight(fragNormal, lod);
     vec3 ambientSH = sphericalHarmonics_evalSphericalLight(getLightAmbientSphere(lightAmbient), fragNormal).xyz;
 
    // vec3 ambient = sphericalHarmonics_evalSphericalLight(getLightAmbientSphere(lightAmbient), fragNormal).xyz;

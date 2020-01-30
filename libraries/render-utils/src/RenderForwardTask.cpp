@@ -239,6 +239,7 @@ void PrepareForward::run(const RenderContextPointer& renderContext, const Inputs
 
         if (keyAmbiLight) {
             batch.setUniformBuffer(gr::Buffer::AmbientLight, keyAmbiLight->getAmbientSchemaBuffer());
+            batch.setUniformBuffer(ru::Buffer::SkyboxParams, keyAmbiLight->getSkyboxColorSchemaBuffer());
 
             if (keyAmbiLight->getAmbientMap()) {
                 batch.setResourceTexture(ru::Texture::Skybox, keyAmbiLight->getAmbientMap());
