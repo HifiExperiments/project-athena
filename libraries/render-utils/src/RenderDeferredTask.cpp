@@ -488,7 +488,7 @@ void RenderTransparentDeferred::run(const RenderContextPointer& renderContext, c
         batch.setResourceTexture(ru::Texture::AmbientFresnel, lightingModel->getAmbientFresnelLUT());
 
         // Set the light
-        deferredLightingEffect->setupKeyLightBatch(args, batch, *lightFrame);
+        deferredLightingEffect->setupKeyLightBatch(args, batch, *lightFrame, true);
         deferredLightingEffect->setupLocalLightsBatch(batch, lightClusters);
 
         // Setup haze if current zone has haze

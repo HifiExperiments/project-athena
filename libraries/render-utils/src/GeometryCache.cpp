@@ -788,9 +788,9 @@ render::ShapePipelinePointer GeometryCache::getShapePipeline(bool textured, bool
         graphics::MaterialKey::CullFaceMode cullFaceMode) {
 
     return std::make_shared<render::ShapePipeline>(getSimplePipeline(textured, transparent, unlit, depthBias, false, true, forward, cullFaceMode), nullptr,
-        [](const render::ShapePipeline& pipeline, gpu::Batch& batch, render::Args* args) {
+        [forward](const render::ShapePipeline& pipeline, gpu::Batch& batch, render::Args* args) {
             batch.setResourceTexture(gr::Texture::MaterialAlbedo, DependencyManager::get<TextureCache>()->getWhiteTexture());
-            DependencyManager::get<DeferredLightingEffect>()->setupKeyLightBatch(args, batch);
+            DependencyManager::get<DeferredLightingEffect>()->setupKeyLightBatch(args, batch, forward);
         }
     );
 }

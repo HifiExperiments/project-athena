@@ -44,8 +44,8 @@ class DeferredLightingEffect : public Dependency {
 public:
     void init();
  
-    static void setupKeyLightBatch(const RenderArgs* args, gpu::Batch& batch);
-    static void setupKeyLightBatch(const RenderArgs* args, gpu::Batch& batch, const LightStage::Frame& lightFrame);
+    static void setupKeyLightBatch(const RenderArgs* args, gpu::Batch& batch, bool setupSkyboxParams);
+    static void setupKeyLightBatch(const RenderArgs* args, gpu::Batch& batch, const LightStage::Frame& lightFrame, bool setupSkyboxParams);
     static void unsetKeyLightBatch(gpu::Batch& batch);
 
     static void setupLocalLightsBatch(gpu::Batch& batch, const LightClustersPointer& lightClusters);

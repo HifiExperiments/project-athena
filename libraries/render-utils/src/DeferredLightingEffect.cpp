@@ -55,11 +55,11 @@ void DeferredLightingEffect::init() {
 }
 
 // FIXME: figure out how to move lightFrame into a varying in GeometryCache and RenderPipelines
-void DeferredLightingEffect::setupKeyLightBatch(const RenderArgs* args, gpu::Batch& batch) {
-    setupKeyLightBatch(args, batch, args->_scene->getStage<LightStage>()->_currentFrame);
+void DeferredLightingEffect::setupKeyLightBatch(const RenderArgs* args, gpu::Batch& batch, bool setupSkyboxParams) {
+    setupKeyLightBatch(args, batch, args->_scene->getStage<LightStage>()->_currentFrame, setupSkyboxParams);
 }
 
-void DeferredLightingEffect::setupKeyLightBatch(const RenderArgs* args, gpu::Batch& batch, const LightStage::Frame& lightFrame) {
+void DeferredLightingEffect::setupKeyLightBatch(const RenderArgs* args, gpu::Batch& batch, const LightStage::Frame& lightFrame, bool setupSkyboxParams) {
     PerformanceTimer perfTimer("DLE->setupBatch()");
     graphics::LightPointer keySunLight;
     auto lightStage = args->_scene->getStage<LightStage>();
@@ -78,7 +78,9 @@ void DeferredLightingEffect::setupKeyLightBatch(const RenderArgs* args, gpu::Bat
 
     if (keyAmbiLight) {
         batch.setUniformBuffer(gr::Buffer::AmbientLight, keyAmbiLight->getAmbientSchemaBuffer());
-        batch.setUniformBuffer(ru::Buffer::SkyboxParams, keyAmbiLight->getSkyboxColorSchemaBuffer());
+        if (setupSkyboxParams) {
+            batch.setUniformBuffer(ru::Buffer::SkyboxParams, keyAmbiLight->getSkyboxColorSchemaBuffer());
+        }
 
         if (keyAmbiLight->getAmbientMap() ) {
             batch.setResourceTexture(ru::Texture::Skybox, keyAmbiLight->getAmbientMap());
@@ -96,7 +98,6 @@ void DeferredLightingEffect::unsetKeyLightBatch(gpu::Batch& batch) {
 void DeferredLightingEffect::setupLocalLightsBatch(gpu::Batch& batch, const LightClustersPointer& lightClusters) {
     // Bind the global list of lights and the visible lights this frame
     batch.setUniformBuffer(gr::Buffer::Light, lightClusters->_lightStage->getLightArrayBuffer());
-
     batch.setUniformBuffer(ru::Buffer::LightClusterFrustumGrid, lightClusters->_frustumGridBuffer);
     batch.setUniformBuffer(ru::Buffer::LightClusterGrid, lightClusters->_clusterGridBuffer);
     batch.setUniformBuffer(ru::Buffer::LightClusterContent, lightClusters->_clusterContentBuffer);
@@ -427,7 +428,7 @@ void RenderDeferredSetup::run(const render::RenderContextPointer& renderContext,
         }
 
         // Setup the global lighting
-        deferredLightingEffect->setupKeyLightBatch(args, batch, *lightFrame);
+        deferredLightingEffect->setupKeyLightBatch(args, batch, *lightFrame, true);
 
         // Haze
         const auto& hazeStage = args->_scene->getStage<HazeStage>();
@@ -490,6 +491,7 @@ void RenderDeferredLocals::run(const render::RenderContextPointer& renderContext
         auto& lightIndices = lightClusters->_visibleLightIndices;
         if (!lightIndices.empty() && lightIndices[0] > 0) {
             deferredLightingEffect->setupLocalLightsBatch(batch, lightClusters);
+            deferredLightingEffect->setupKeyLightBatch(args, batch, false);
 
             // Local light pipeline
             batch.setPipeline(deferredLightingEffect->_localLight);
@@ -502,6 +504,9 @@ void RenderDeferredLocals::run(const render::RenderContextPointer& renderContext
 
                 batch.draw(gpu::TRIANGLE_STRIP, 4);
             }
+
+            deferredLightingEffect->unsetLocalLightsBatch(batch);
+            deferredLightingEffect->unsetKeyLightBatch(batch);
         }
     }
 }
@@ -530,7 +535,6 @@ void RenderDeferredCleanup::run(const render::RenderContextPointer& renderContex
         batch.setUniformBuffer(ru::Buffer::LightClusterFrustumGrid, nullptr);
         batch.setUniformBuffer(ru::Buffer::LightClusterGrid, nullptr);
         batch.setUniformBuffer(ru::Buffer::LightClusterContent, nullptr);
-
     }
 }
 
