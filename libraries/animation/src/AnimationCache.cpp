@@ -20,7 +20,7 @@
 #include <Profile.h>
 
 #include "AnimationLogging.h"
-#include <FBXSerializer.h>
+#include <hfm/ModelFormatRegistry.h>
 
 int animationPointerMetaTypeId = qRegisterMetaType<AnimationPointer>();
 
@@ -70,14 +70,14 @@ void AnimationReader::run() {
         urlValid &= !_url.path().isEmpty();
 
         if (urlValid) {
-            // Parse the FBX directly from the QNetworkReply
+            // Parse the QNetworkReply
             HFMModel::Pointer hfmModel;
-            if (_url.path().toLower().endsWith(".fbx")) {
-                hfmModel = FBXSerializer().read(_data, QVariantHash(), _url.path());
-            } else {
+            auto serializer = DependencyManager::get<ModelFormatRegistry>()->getSerializerForMediaType(_data, _url, "");
+            if (!serializer) {
                 QString errorStr("usupported format");
                 emit onError(299, errorStr);
             }
+            hfmModel = serializer->read(_data, QVariantHash(), _url.path());
             emit onSuccess(hfmModel);
         } else {
             throw QString("url is invalid");
