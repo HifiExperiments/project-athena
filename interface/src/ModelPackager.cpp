@@ -17,7 +17,7 @@
 #include <QTemporaryDir>
 
 #include <FSTReader.h>
-#include <FBXSerializer.h>
+#include <hfm/ModelFormatRegistry.h>
 #include <OffscreenUi.h>
 
 #include "ModelSelector.h"
@@ -90,29 +90,34 @@ bool ModelPackager::loadModel() {
         _mapping = FSTReader::readMapping(fst.readAll());
         fst.close();
         
-        _fbxInfo = QFileInfo(_modelFile.path() + "/" + _mapping.value(FILENAME_FIELD).toString());
+        _modelInfo = QFileInfo(_modelFile.path() + "/" + _mapping.value(FILENAME_FIELD).toString());
     } else {
-        _fbxInfo = QFileInfo(_modelFile.filePath());
+        _modelInfo = QFileInfo(_modelFile.filePath());
     }
     
-    // open the fbx file
-    QFile fbx(_fbxInfo.filePath());
-    if (!_fbxInfo.exists() || !_fbxInfo.isFile() || !fbx.open(QIODevice::ReadOnly)) {
+    // open the model file
+    QFile model(_modelInfo.filePath());
+    if (!_modelInfo.exists() || !_modelInfo.isFile() || !model.open(QIODevice::ReadOnly)) {
         OffscreenUi::asyncWarning(NULL,
                              QString("ModelPackager::loadModel()"),
-                             QString("Could not open FBX file %1").arg(_fbxInfo.filePath()),
+                             QString("Could not open model file %1").arg(_modelInfo.filePath()),
                              QMessageBox::Ok);
-        qWarning() << "ModelPackager::loadModel(): Could not open FBX file";
+        qWarning() << "ModelPackager::loadModel(): Could not open model file";
         return false;
     }
     try {
-        qCDebug(interfaceapp) << "Reading FBX file : " << _fbxInfo.filePath();
-        QByteArray fbxContents = fbx.readAll();
+        qCDebug(interfaceapp) << "Reading model file : " << _modelInfo.filePath();
+        QByteArray modelContents = model.readAll();
+        auto serializer = DependencyManager::get<ModelFormatRegistry>()->getSerializerForMediaType(modelContents, _modelInfo.filePath(), "");
+        if (!serializer) {
+            qCDebug(interfaceapp) << "Error reading: " << _modelInfo.filePath();
+            return false;
+        }
 
-        _hfmModel = FBXSerializer().read(fbxContents, QVariantHash(), _fbxInfo.filePath());
+        _hfmModel = serializer->read(modelContents, QVariantHash(), _modelInfo.filePath());
 
         // make sure we have some basic mappings
-        populateBasicMapping(_mapping, _fbxInfo.filePath(), *_hfmModel);
+        populateBasicMapping(_mapping, _modelInfo.filePath(), *_hfmModel);
     } catch (const QString& error) {
         qCDebug(interfaceapp) << "Error reading: " << error;
         return false;
@@ -155,9 +160,9 @@ bool ModelPackager::zipModel() {
     QByteArray nameField = _mapping.value(NAME_FIELD).toByteArray();
     tempDir.mkpath(nameField + "/textures");
     tempDir.mkpath(nameField + "/scripts");
-    QDir fbxDir(tempDir.path() + "/" + nameField);
-    QDir texDir(fbxDir.path() + "/textures");
-    QDir scriptDir(fbxDir.path() + "/scripts");
+    QDir modelDir(tempDir.path() + "/" + nameField);
+    QDir texDir(modelDir.path() + "/textures");
+    QDir scriptDir(modelDir.path() + "/scripts");
 
     // Copy textures
     listTextures();
@@ -190,18 +195,18 @@ bool ModelPackager::zipModel() {
         for (auto it = lodField.constBegin(); it != lodField.constEnd(); ++it) {
             QString oldPath = _modelFile.path() + "/" + it.key();
             QFile lod(oldPath);
-            QString newPath = fbxDir.path() + "/" + QFileInfo(lod).fileName();
+            QString newPath = modelDir.path() + "/" + QFileInfo(lod).fileName();
             if (lod.exists()) {
                 lod.copy(newPath);
             }
         }
     }
     
-    // Copy FBX
-    QFile fbx(_fbxInfo.filePath());
+    // Copy model
+    QFile model(_modelInfo.filePath());
     QByteArray filenameField = _mapping.value(FILENAME_FIELD).toByteArray();
-    QString newPath = fbxDir.path() + "/" + QFileInfo(filenameField).fileName();
-    fbx.copy(newPath);
+    QString newPath = modelDir.path() + "/" + QFileInfo(filenameField).fileName();
+    model.copy(newPath);
     
     // Correct FST
     _mapping[FILENAME_FIELD] = tempDir.relativeFilePath(newPath);

@@ -13,6 +13,7 @@
 #define hifi_FSTBaker_h
 
 #include "../ModelBaker.h"
+#include <shared/HifiTypes.h>
 
 class FSTBaker : public ModelBaker {
     Q_OBJECT

@@ -40,7 +40,7 @@ private:
     bool copyTextures(const QString& oldDir, const QDir& newDir);
     
     QFileInfo _modelFile;
-    QFileInfo _fbxInfo;
+    QFileInfo _modelInfo;
     QString _texDir;
     QString _scriptDir;
 

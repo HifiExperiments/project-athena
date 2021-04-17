@@ -128,7 +128,7 @@ const QVector<HFMAnimationFrame>& Animation::getFramesReference() const {
 }
 
 void Animation::downloadFinished(const QByteArray& data) {
-    // parse the animation/fbx file on a background thread.
+    // parse the animation/model file on a background thread.
     AnimationReader* animationReader = new AnimationReader(_url, data);
     connect(animationReader, SIGNAL(onSuccess(HFMModel::Pointer)), SLOT(animationParseSuccess(HFMModel::Pointer)));
     connect(animationReader, SIGNAL(onError(int, QString)), SLOT(animationParseError(int, QString)));

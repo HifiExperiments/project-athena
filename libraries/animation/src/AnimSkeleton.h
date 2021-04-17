@@ -15,7 +15,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include <FBXSerializer.h>
+#include <hfm/HFM.h>
 #include "AnimPose.h"
 
 class AnimSkeleton {
@@ -40,10 +40,10 @@ public:
     const AnimPoseVec& getAbsoluteDefaultPoses() const { return _absoluteDefaultPoses; }
     const glm::mat4& getGeometryOffset() const { return _geometryOffset; }
 
-    // get pre transform which should include FBX pre potations
+    // get pre transform which should include model pre potations
     const AnimPose& getPreRotationPose(int jointIndex) const;
 
-    // get post transform which might include FBX offset transformations
+    // get post transform which might include model offset transformations
     const AnimPose& getPostRotationPose(int jointIndex) const;
 
     int getParentIndex(int jointIndex) const {

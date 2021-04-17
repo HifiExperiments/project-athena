@@ -400,7 +400,7 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
                 uint32_t numIndices = (uint32_t)part.y;
                 // TODO: assert rather than workaround after we start sanitizing HFMMesh higher up
                 //assert(numIndices % TRIANGLE_STRIDE == 0);
-                numIndices -= numIndices % TRIANGLE_STRIDE; // WORKAROUND lack of sanity checking in FBXSerializer
+                numIndices -= numIndices % TRIANGLE_STRIDE; // WORKAROUND lack of sanity checking in AssimpSerializer
                 uint32_t indexStart = (uint32_t)part.x;
                 uint32_t indexEnd = indexStart + numIndices;
                 for (uint32_t j = indexStart; j < indexEnd; ++j) {
@@ -579,7 +579,7 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
                         auto numIndices = partItr->y;
                         // TODO: assert rather than workaround after we start sanitizing HFMMesh higher up
                         //assert(numIndices % TRIANGLE_STRIDE == 0);
-                        numIndices -= numIndices % TRIANGLE_STRIDE; // WORKAROUND lack of sanity checking in FBXSerializer
+                        numIndices -= numIndices % TRIANGLE_STRIDE; // WORKAROUND lack of sanity checking in AssimpSerializer
                         auto indexItr = indices.cbegin() + partItr->x;
                         auto indexEnd = indexItr + numIndices;
                         while (indexItr != indexEnd) {
@@ -597,7 +597,7 @@ void RenderableModelEntityItem::computeShapeInfo(ShapeInfo& shapeInfo) {
                         auto numIndices = partItr->y;
                         // TODO: assert rather than workaround after we start sanitizing HFMMesh higher up
                         //assert(numIndices% TRIANGLE_STRIDE == 0);
-                        numIndices -= numIndices % TRIANGLE_STRIDE; // WORKAROUND lack of sanity checking in FBXSerializer
+                        numIndices -= numIndices % TRIANGLE_STRIDE; // WORKAROUND lack of sanity checking in AssimpSerializer
                         auto indexItr = indices.cbegin() + partItr->x;
                         auto indexEnd = indexItr + numIndices;
                         while (indexItr != indexEnd) {

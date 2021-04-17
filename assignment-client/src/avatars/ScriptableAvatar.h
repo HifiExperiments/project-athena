@@ -113,9 +113,7 @@ public:
     /*@jsdoc
      * Starts playing an animation on the avatar.
      * @function Avatar.startAnimation
-     * @param {string} url - The animation file's URL. Animation files need to be in glTF or FBX format but only need to 
-     *     contain the avatar skeleton and animation data. glTF models may be in JSON or binary format (".gltf" or ".glb" URLs 
-     *     respectively).
+     * @param {string} url - The animation file's URL. Animation files only need to contain the avatar skeleton and animation data.
      *     <p><strong>Warning:</strong> glTF animations currently do not always animate correctly.</p>
      * @param {number} [fps=30] - The frames per second (FPS) rate for the animation playback. 30 FPS is normal speed.
      * @param {number} [priority=1] - <em>Not used.</em>
@@ -219,7 +217,7 @@ private:
     std::shared_ptr<AnimSkeleton> _animSkeleton;
     QHash<QString, int> _fstJointIndices; ///< 1-based, since zero is returned for missing keys
     QStringList _fstJointNames; ///< in order of depth-first traversal
-    QUrl _skeletonFBXURL;
+    QUrl _resolvedSkeletonModelURL;
     mutable QScriptEngine _scriptEngine;
     std::map<QUuid, EntityItemPointer> _entities;
 

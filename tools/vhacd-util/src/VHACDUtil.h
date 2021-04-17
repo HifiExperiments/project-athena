@@ -27,7 +27,7 @@ namespace vhacd {
     public:
         void setVerbose(bool verbose) { _verbose = verbose; }
 
-        bool loadFBX(const QString filename, HFMModel& result);
+        bool loadModel(const QString filename, HFMModel& result);
 
         void fattenMesh(const HFMMesh& mesh, const glm::mat4& modelOffset, HFMMesh& result) const;
 

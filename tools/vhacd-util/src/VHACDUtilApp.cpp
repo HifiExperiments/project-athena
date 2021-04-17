@@ -123,10 +123,10 @@ VHACDUtilApp::VHACDUtilApp(int argc, char* argv[]) :
     const QCommandLineOption generateHullsOption("g", "output convex hull approximations");
     parser.addOption(generateHullsOption);
 
-    const QCommandLineOption inputFilenameOption("i", "input file", "filename.fbx");
+    const QCommandLineOption inputFilenameOption("i", "input file", "filename.*");
     parser.addOption(inputFilenameOption);
 
-    const QCommandLineOption outputFilenameOption("o", "output file", "filename.obj");
+    const QCommandLineOption outputFilenameOption("o", "output file", "filename.*");
     parser.addOption(outputFilenameOption);
 
     const QCommandLineOption outputCentimetersOption("c", "output units are centimeters");
@@ -297,9 +297,9 @@ VHACDUtilApp::VHACDUtilApp(int argc, char* argv[]) :
     }
 
     // load the mesh
-    HFMModel fbx;
+    HFMModel hfm;
     auto begin = std::chrono::high_resolution_clock::now();
-    if (!vUtil.loadFBX(inputFilename, fbx)){
+    if (!vUtil.loadModel(inputFilename, hfm)){
         _returnCode = VHACD_RETURN_CODE_FAILURE_TO_READ;
         return;
     }
@@ -315,10 +315,10 @@ VHACDUtilApp::VHACDUtilApp(int argc, char* argv[]) :
         QVector<QString> infileExtensions = {"fbx", "obj"};
         QString baseFileName = fileNameWithoutExtension(outputFilename, infileExtensions);
         int count = 0;
-        foreach (const HFMMesh& mesh, fbx.meshes) {
+        foreach (const HFMMesh& mesh, hfm.meshes) {
             foreach (const HFMMeshPart &meshPart, mesh.parts) {
                 QString outputFileName = baseFileName + "-" + QString::number(count) + ".obj";
-                writeOBJ(outputFileName, fbx, outputCentimeters, count);
+                writeOBJ(outputFileName, hfm, outputCentimeters, count);
                 count++;
                 (void)meshPart; // quiet warning
             }
@@ -359,7 +359,7 @@ VHACDUtilApp::VHACDUtilApp(int argc, char* argv[]) :
         begin = std::chrono::high_resolution_clock::now();
 
         HFMModel result;
-        bool success = vUtil.computeVHACD(fbx, params, result, minimumMeshSize, maximumMeshSize);
+        bool success = vUtil.computeVHACD(hfm, params, result, minimumMeshSize, maximumMeshSize);
 
         end = std::chrono::high_resolution_clock::now();
         auto computeDuration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
@@ -398,22 +398,22 @@ VHACDUtilApp::VHACDUtilApp(int argc, char* argv[]) :
     }
 
     if (fattenFaces) {
-        HFMModel newFbx;
+        HFMModel newHfm;
         HFMMesh result;
 
         // count the mesh-parts
         size_t meshCount = 0;
-        foreach (const HFMMesh& mesh, fbx.meshes) {
+        foreach (const HFMMesh& mesh, hfm.meshes) {
             meshCount += mesh.parts.size();
         }
 
         result.modelTransform = glm::mat4(); // Identity matrix
-        foreach (const HFMMesh& mesh, fbx.meshes) {
-            vUtil.fattenMesh(mesh, fbx.offset, result);
+        foreach (const HFMMesh& mesh, hfm.meshes) {
+            vUtil.fattenMesh(mesh, hfm.offset, result);
         }
 
-        newFbx.meshes.push_back(result);
-        writeOBJ(outputFilename, newFbx, outputCentimeters);
+        newHfm.meshes.push_back(result);
+        writeOBJ(outputFilename, newHfm, outputCentimeters);
     }
 }
 

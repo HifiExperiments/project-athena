@@ -14,12 +14,10 @@
 #include <unordered_map>
 #include <QVector>
 
+#include <AssimpSerializer.h>
 #include <NumericalConstants.h>
-#include <FBXSerializer.h>
-#include <OBJSerializer.h>
 
-
-// FBXSerializer jumbles the order of the meshes by reading them back out of a hashtable.  This will put
+// AssimpSerializer jumbles the order of the meshes by reading them back out of a hashtable.  This will put
 // them back in the order in which they appeared in the file.
 bool HFMModelLessThan(const HFMMesh& e1, const HFMMesh& e2) {
     return e1.meshIndex < e2.meshIndex;
@@ -30,30 +28,23 @@ void reSortHFMModelMeshes(HFMModel& hfmModel) {
 
 
 // Read all the meshes from provided FBX file
-bool vhacd::VHACDUtil::loadFBX(const QString filename, HFMModel& result) {
+bool vhacd::VHACDUtil::loadModel(const QString filename, HFMModel& result) {
     if (_verbose) {
-        qDebug() << "reading FBX file =" << filename << "...";
+        qDebug() << "reading model file =" << filename << "...";
     }
 
-    // open the fbx file
-    QFile fbx(filename);
-    if (!fbx.open(QIODevice::ReadOnly)) {
-        qWarning() << "unable to open FBX file =" << filename;
+    // open the model file
+    QFile model(filename);
+    if (!model.open(QIODevice::ReadOnly)) {
+        qWarning() << "unable to open model file =" << filename;
         return false;
     }
     try {
-        hifi::ByteArray fbxContents = fbx.readAll();
+        hifi::ByteArray modelContents = model.readAll();
         HFMModel::Pointer hfmModel;
         hifi::VariantHash mapping;
         mapping["deduplicateIndices"] = true;
-        if (filename.toLower().endsWith(".obj")) {
-            hfmModel = OBJSerializer().read(fbxContents, mapping, filename);
-        } else if (filename.toLower().endsWith(".fbx")) {
-            hfmModel = FBXSerializer().read(fbxContents, mapping, filename);
-        } else {
-            qWarning() << "file has unknown extension" << filename;
-            return false;
-        }
+        hfmModel = AssimpSerializer().read(modelContents, mapping, filename);
         result = *hfmModel;
 
         reSortHFMModelMeshes(result);
@@ -281,7 +272,7 @@ void vhacd::VHACDUtil::getConvexResults(VHACD::IVHACD* convexifier, HFMMesh& res
         if (_verbose) {
             qDebug() << "    hull" << j << " vertices =" << hull.m_nPoints
                 << " triangles =" << hull.m_nTriangles
-                << " FBXMeshVertices =" << resultMesh.vertices.size();
+                << " HFMMesh vertices =" << resultMesh.vertices.size();
         }
     }
 }

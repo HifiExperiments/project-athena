@@ -164,7 +164,7 @@ void ScriptableAvatar::update(float deltatime) {
             for (int i = 0; i < animationJointNames.size(); i++) {
                 const QString& name = animationJointNames[i];
                 // As long as we need the model preRotations anyway, let's get the jointIndex from the bind skeleton rather than
-                // trusting the .fst (which is sometimes not updated to match changes to .fbx).
+                // trusting the .fst (which is sometimes not updated to match changes to the model).
                 int mapping = _bind->getHFMModel().getJointIndex(name);
                 if (mapping != -1 && !_maskedJoints.contains(name)) {
 
@@ -249,7 +249,7 @@ void ScriptableAvatar::setJointMappingsFromNetworkReply() {
             if (line.startsWith("filename")) {
                 int filenameIndex = line.indexOf('=') + 1;
                 if (filenameIndex > 0) {
-                    _skeletonFBXURL = _skeletonModelURL.resolved(QString(line.mid(filenameIndex).trimmed()));
+                    _resolvedSkeletonModelURL = _skeletonModelURL.resolved(QString(line.mid(filenameIndex).trimmed()));
                 }
             }
             if (!line.startsWith("jointIndex")) {

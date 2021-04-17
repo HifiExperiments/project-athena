@@ -29,7 +29,7 @@ AnimSkeleton::AnimSkeleton(const HFMModel& hfmModel) {
         std::vector<HFMCluster> dummyClustersList;
 
         for (uint32_t j = 0; j < (uint32_t)deformer.clusters.size(); j++) {
-            // cast into a non-const reference, so we can mutate the FBXCluster
+            // cast into a non-const reference, so we can mutate the HFMCluster
             HFMCluster& cluster = const_cast<HFMCluster&>(deformer.clusters.at(j));
 
             HFMCluster localCluster;
@@ -88,12 +88,12 @@ const AnimPose& AnimSkeleton::getAbsoluteDefaultPose(int jointIndex) const {
     return _absoluteDefaultPoses[jointIndex];
 }
 
-// get pre multiplied transform which should include FBX pre potations
+// get pre multiplied transform which should include model pre potations
 const AnimPose& AnimSkeleton::getPreRotationPose(int jointIndex) const {
     return _relativePreRotationPoses[jointIndex];
 }
 
-// get post multiplied transform which might include FBX offset transformations
+// get post multiplied transform which might include model offset transformations
 const AnimPose& AnimSkeleton::getPostRotationPose(int jointIndex) const {
     return _relativePostRotationPoses[jointIndex];
 }

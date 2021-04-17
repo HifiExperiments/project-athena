@@ -16,7 +16,7 @@
 #include "AnimNode.h"
 
 // Playback a single animation timeline.
-// url determines the location of the fbx file to use within this clip.
+// url determines the location of the model file to use within this clip.
 // startFrame and endFrame are in frames 1/30th of a second.
 // timescale can be used to speed-up or slow-down the animation.
 // loop flag, when true, will loop the animation as it reaches the end frame.

@@ -17,7 +17,6 @@
 
 #include <DependencyManager.h>
 #include <hfm/ModelFormatRegistry.h>
-#include <FBXSerializer.h>
 
 #include <model-baker/Baker.h>
 #include <model-baker/PrepareJointsTask.h>

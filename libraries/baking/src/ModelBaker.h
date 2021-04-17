@@ -23,7 +23,6 @@
 
 #include "ModelBakingLoggingCategory.h"
 
-#include <FBX.h>
 #include <hfm/HFM.h>
 
 using GetMaterialIDCallback = std::function <int(int)>;
@@ -47,7 +46,7 @@ public:
 
     void initializeOutputDirs();
 
-    bool buildDracoMeshNode(FBXNode& dracoMeshNode, const QByteArray& dracoMeshBytes, const std::vector<hifi::ByteArray>& dracoMaterialList);
+    //bool buildDracoMeshNode(FBXNode& dracoMeshNode, const QByteArray& dracoMeshBytes, const std::vector<hifi::ByteArray>& dracoMaterialList);
     virtual void setWasAborted(bool wasAborted) override;
 
     QUrl getModelURL() const { return _modelURL; }
@@ -67,7 +66,7 @@ protected:
     virtual void bakeProcessedSource(const hfm::Model::Pointer& hfmModel, const std::vector<hifi::ByteArray>& dracoMeshes, const std::vector<std::vector<hifi::ByteArray>>& dracoMaterialLists) = 0;
     void exportScene();
 
-    FBXNode _rootNode;
+    //FBXNode _rootNode;
     QUrl _originalInputModelURL;
     QUrl _modelURL;
     QUrl _outputURLSuffix;

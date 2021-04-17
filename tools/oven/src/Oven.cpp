@@ -24,8 +24,7 @@
 #include <procedural/ProceduralMaterialCache.h>
 #include <material-networking/TextureCache.h>
 #include <hfm/ModelFormatRegistry.h>
-#include <FBXSerializer.h>
-#include <OBJSerializer.h>
+#include <AssimpSerializer.h>
 
 #include "MaterialBaker.h"
 
@@ -51,8 +50,7 @@ Oven::Oven() {
 
     {
         auto modelFormatRegistry = DependencyManager::set<ModelFormatRegistry>();
-        modelFormatRegistry->addFormat(FBXSerializer());
-        modelFormatRegistry->addFormat(OBJSerializer());
+        modelFormatRegistry->addFormat(AssimpSerializer());
     }
 }
 

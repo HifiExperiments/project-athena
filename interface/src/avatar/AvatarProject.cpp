@@ -18,7 +18,7 @@
 #include <QQmlEngine>
 #include <QTimer>
 
-#include "FBXSerializer.h"
+#include <AssimpSerializer.h>
 #include <ui/TabletScriptingInterface.h>
 #include "scripting/HMDScriptingInterface.h"
 
@@ -94,14 +94,14 @@ AvatarProject* AvatarProject::createAvatarProject(const QString& projectsFolder,
     const auto newFSTPath = projectDir.absoluteFilePath("avatar.fst");
     QFile::copy(avatarModelPath, newModelPath);
 
-    QFileInfo fbxInfo{ newModelPath };
-    if (!fbxInfo.exists() || !fbxInfo.isFile()) {
+    QFileInfo modelInfo{ newModelPath };
+    if (!modelInfo.exists() || !modelInfo.isFile()) {
         status = AvatarProjectStatus::ERROR_CREATE_FIND_MODEL;
         return nullptr;
     }
 
-    QFile fbx{ fbxInfo.filePath() };
-    if (!fbx.open(QIODevice::ReadOnly)) {
+    QFile model{ modelInfo.filePath() };
+    if (!model.open(QIODevice::ReadOnly)) {
         status = AvatarProjectStatus::ERROR_CREATE_OPEN_MODEL;
         return nullptr;
     }
@@ -109,8 +109,9 @@ AvatarProject* AvatarProject::createAvatarProject(const QString& projectsFolder,
     std::shared_ptr<hfm::Model> hfmModel;
 
     try {
-        const QByteArray fbxContents = fbx.readAll();
-        hfmModel = FBXSerializer().read(fbxContents, QVariantHash(), fbxInfo.filePath());
+        const QByteArray modelContents = model.readAll();
+
+        hfmModel = AssimpSerializer().read(modelContents, QVariantHash(), modelInfo.filePath());
     } catch (const QString& error) {
         Q_UNUSED(error)
         status = AvatarProjectStatus::ERROR_CREATE_READ_MODEL;
@@ -138,7 +139,7 @@ AvatarProject* AvatarProject::createAvatarProject(const QString& projectsFolder,
         addTextureToList(material.lightmapTexture);
     }
 
-    QDir textureDir(textureFolder.isEmpty() ? fbxInfo.absoluteDir() : textureFolder);
+    QDir textureDir(textureFolder.isEmpty() ? modelInfo.absoluteDir() : textureFolder);
 
     for (const auto& texture : textures) {
         QString sourcePath = textureDir.path() + "/" + texture;
