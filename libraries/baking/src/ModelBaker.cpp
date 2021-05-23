@@ -21,7 +21,7 @@
 #include <model-baker/Baker.h>
 #include <model-baker/PrepareJointsTask.h>
 
-#include <FBXWriter.h>
+//#include <FBXWriter.h>
 #include <FSTReader.h>
 
 #ifdef _WIN32
@@ -230,11 +230,11 @@ void ModelBaker::bakeSourceCopy() {
 
         // Temporarily support copying the pre-parsed node from FBXSerializer, for better performance in FBXBaker
         // TODO: Pure HFM baking
-        std::shared_ptr<FBXSerializer> fbxSerializer = std::dynamic_pointer_cast<FBXSerializer>(serializer);
-        if (fbxSerializer) {
-            qCDebug(model_baking) << "Parsing" << _modelURL;
-            _rootNode = fbxSerializer->_rootNode;
-        }
+        //std::shared_ptr<FBXSerializer> fbxSerializer = std::dynamic_pointer_cast<FBXSerializer>(serializer);
+        //if (fbxSerializer) {
+        //    qCDebug(model_baking) << "Parsing" << _modelURL;
+        //    _rootNode = fbxSerializer->_rootNode;
+        //}
 
         baker::Baker baker(loadedModel, serializerMapping, _mappingURL);
         auto config = baker.getConfiguration();
@@ -440,38 +440,38 @@ void ModelBaker::abort() {
         _materialBaker->abort();
     }
 }
-
-bool ModelBaker::buildDracoMeshNode(FBXNode& dracoMeshNode, const QByteArray& dracoMeshBytes, const std::vector<hifi::ByteArray>& dracoMaterialList) {
-    if (dracoMeshBytes.isEmpty()) {
-        handleWarning("Empty mesh detected in model: '" + _modelURL.toString() + "'. It will be included in the baked output.");
-    }
-
-    FBXNode dracoNode;
-    dracoNode.name = "DracoMesh";
-    dracoNode.properties.append(QVariant::fromValue(dracoMeshBytes));
-    // Additional draco mesh node information
-    {
-        FBXNode fbxVersionNode;
-        fbxVersionNode.name = "FBXDracoMeshVersion";
-        fbxVersionNode.properties.append(FBX_DRACO_MESH_VERSION);
-        dracoNode.children.append(fbxVersionNode);
-
-        FBXNode dracoVersionNode;
-        dracoVersionNode.name = "DracoMeshVersion";
-        dracoVersionNode.properties.append(DRACO_MESH_VERSION);
-        dracoNode.children.append(dracoVersionNode);
-
-        FBXNode materialListNode;
-        materialListNode.name = "MaterialList";
-        for (const hifi::ByteArray& materialID : dracoMaterialList) {
-            materialListNode.properties.append(materialID);
-        }
-        dracoNode.children.append(materialListNode);
-    }
-    
-    dracoMeshNode = dracoNode;
-    return true;
-}
+//
+//bool ModelBaker::buildDracoMeshNode(FBXNode& dracoMeshNode, const QByteArray& dracoMeshBytes, const std::vector<hifi::ByteArray>& dracoMaterialList) {
+//    if (dracoMeshBytes.isEmpty()) {
+//        handleWarning("Empty mesh detected in model: '" + _modelURL.toString() + "'. It will be included in the baked output.");
+//    }
+//
+//    FBXNode dracoNode;
+//    dracoNode.name = "DracoMesh";
+//    dracoNode.properties.append(QVariant::fromValue(dracoMeshBytes));
+//    // Additional draco mesh node information
+//    {
+//        FBXNode fbxVersionNode;
+//        fbxVersionNode.name = "FBXDracoMeshVersion";
+//        fbxVersionNode.properties.append(FBX_DRACO_MESH_VERSION);
+//        dracoNode.children.append(fbxVersionNode);
+//
+//        FBXNode dracoVersionNode;
+//        dracoVersionNode.name = "DracoMeshVersion";
+//        dracoVersionNode.properties.append(DRACO_MESH_VERSION);
+//        dracoNode.children.append(dracoVersionNode);
+//
+//        FBXNode materialListNode;
+//        materialListNode.name = "MaterialList";
+//        for (const hifi::ByteArray& materialID : dracoMaterialList) {
+//            materialListNode.properties.append(materialID);
+//        }
+//        dracoNode.children.append(materialListNode);
+//    }
+//    
+//    dracoMeshNode = dracoNode;
+//    return true;
+//}
 
 void ModelBaker::setWasAborted(bool wasAborted) {
     if (wasAborted != _wasAborted.load()) {
@@ -484,7 +484,7 @@ void ModelBaker::setWasAborted(bool wasAborted) {
 }
 
 void ModelBaker::exportScene() {
-    auto fbxData = FBXWriter::encodeFBX(_rootNode);
+    //auto fbxData = FBXWriter::encodeFBX(_rootNode);
 
     QString bakedModelURL = _bakedModelURL.toString();
     QFile bakedFile(bakedModelURL);
@@ -494,7 +494,7 @@ void ModelBaker::exportScene() {
         return;
     }
 
-    bakedFile.write(fbxData);
+    //bakedFile.write(fbxData);
 
     _outputFiles.push_back(bakedModelURL);
 

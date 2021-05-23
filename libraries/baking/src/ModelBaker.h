@@ -24,6 +24,7 @@
 #include "ModelBakingLoggingCategory.h"
 
 #include <hfm/HFM.h>
+#include <shared/HifiTypes.h>
 
 using GetMaterialIDCallback = std::function <int(int)>;
 

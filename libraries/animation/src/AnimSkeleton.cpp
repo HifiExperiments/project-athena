@@ -307,9 +307,6 @@ void AnimSkeleton::dump(bool verbose) const {
             qCDebug(animation) << "            postRotation =" << _joints[i].postRotation;
             qCDebug(animation) << "            postTransform =" << _joints[i].postTransform;
             qCDebug(animation) << "            transform =" << _joints[i].transform;
-            qCDebug(animation) << "            rotationMin =" << _joints[i].rotationMin << ", rotationMax =" << _joints[i].rotationMax;
-            qCDebug(animation) << "            inverseDefaultRotation" << _joints[i].inverseDefaultRotation;
-            qCDebug(animation) << "            inverseBindRotation" << _joints[i].inverseBindRotation;
             qCDebug(animation) << "            bindTransform" << _joints[i].bindTransform;
             qCDebug(animation) << "            isSkeletonJoint" << _joints[i].isSkeletonJoint;
         }

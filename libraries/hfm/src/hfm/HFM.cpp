@@ -323,37 +323,16 @@ void HFMModel::debugDump() const {
 
     qCDebug(modelformat) << "---------------- Joints ----------------";
     foreach(HFMJoint joint, joints) {
-        qCDebug(modelformat) << "    shapeInfo.avgPoint =" << joint.shapeInfo.avgPoint;
-        qCDebug(modelformat) << "    shapeInfo.debugLines =" << joint.shapeInfo.debugLines;
-        qCDebug(modelformat) << "    shapeInfo.dots =" << joint.shapeInfo.dots;
-        qCDebug(modelformat) << "    shapeInfo.points =" << joint.shapeInfo.points;
-
-        qCDebug(modelformat) << "    ---";
-
-        qCDebug(modelformat) << "    parentIndex" << joint.parentIndex;
-        qCDebug(modelformat) << "    distanceToParent" << joint.distanceToParent;
-        qCDebug(modelformat) << "    transform" << joint.transform;
-        qCDebug(modelformat) << "    globalTransform" << joint.globalTransform;
-        qCDebug(modelformat) << "    globalTransformForChildren" << joint.globalTransformForChildren;
-
-        qCDebug(modelformat) << "    ---";
-
-        qCDebug(modelformat) << "    translation" << joint.translation;
-        qCDebug(modelformat) << "    preTransform" << joint.preTransform;
-        qCDebug(modelformat) << "    preRotation" << joint.preRotation;
-        qCDebug(modelformat) << "    rotation" << joint.rotation;
-        qCDebug(modelformat) << "    postRotation" << joint.postRotation;
-        qCDebug(modelformat) << "    postTransform" << joint.postTransform;
-
-        qCDebug(modelformat) << "    rotationMin" << joint.rotationMin;
-        qCDebug(modelformat) << "    rotationMax" << joint.rotationMax;
-        qCDebug(modelformat) << "    inverseDefaultRotation" << joint.inverseDefaultRotation;
-        qCDebug(modelformat) << "    inverseBindRotation" << joint.inverseBindRotation;
-        qCDebug(modelformat) << "    bindTransformFoundInCluster" << joint.bindTransformFoundInCluster;
-        qCDebug(modelformat) << "    bindTransform" << joint.bindTransform;
         qCDebug(modelformat) << "    name" << joint.name;
+        qCDebug(modelformat) << "    parentIndex" << joint.parentIndex;
+
+        qCDebug(modelformat) << "    ---";
+        
+        qCDebug(modelformat) << "    transform" << joint.transform;
+        qCDebug(modelformat) << "    bindTransform" << joint.bindTransform;
         qCDebug(modelformat) << "    isSkeletonJoint" << joint.isSkeletonJoint;
-        qCDebug(modelformat) << "    geometricOffset" << joint.geometricOffset;
+        qCDebug(modelformat) << "    bindTransformFoundInCluster" << joint.bindTransformFoundInCluster;
+
         qCDebug(modelformat) << "\n";
     }
 

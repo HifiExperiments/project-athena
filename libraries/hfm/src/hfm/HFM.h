@@ -88,37 +88,13 @@ struct JointShapeInfo {
 /// A single joint (transformation node).
 class Joint {
 public:
-    JointShapeInfo shapeInfo;
+    QString name;
     int parentIndex;
-    float distanceToParent;
-
-    // http://download.autodesk.com/us/fbx/20112/FBX_SDK_HELP/SDKRef/a00209.html
-
-    glm::vec3 translation;   // T
-    glm::mat4 preTransform;  // Roff * Rp
-    glm::quat preRotation;   // Rpre
-    glm::quat rotation;      // R
-    glm::quat postRotation;  // Rpost
-    glm::mat4 postTransform; // Rp-1 * Soff * Sp * S * Sp-1
-
-    // World = ParentWorld * T * (Roff * Rp) * Rpre * R * Rpost * (Rp-1 * Soff * Sp * S * Sp-1)
 
     glm::mat4 transform;
-    glm::vec3 rotationMin;  // radians
-    glm::vec3 rotationMax;  // radians
-    glm::quat inverseDefaultRotation;
-    glm::quat inverseBindRotation;
     glm::mat4 bindTransform;
-    QString name;
     bool isSkeletonJoint;
     bool bindTransformFoundInCluster;
-
-    // geometric offset is applied in local space but does NOT affect children.
-    // TODO: currently only supported by FBX.  if added to GLTF, move calculations from FBXSerializer to model preparation step
-    glm::mat4 geometricOffset;
-
-    glm::mat4 globalTransform; // transform of the joint with all parent transforms applied, plus the geometric offset
-    glm::mat4 globalTransformForChildren; // transform of the joint with all parent transforms applied, but not the geometric offset, which doesn't propogate to children
 };
 
 

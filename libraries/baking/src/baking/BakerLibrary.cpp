@@ -12,8 +12,8 @@
 #include "BakerLibrary.h"
 
 #include "FSTBaker.h"
-#include "../FBXBaker.h"
-#include "../OBJBaker.h"
+//#include "../FBXBaker.h"
+//#include "../OBJBaker.h"
 
 // Check if the file pointed to by this URL is a bakeable model, by comparing extensions
 QUrl getBakeableModelURL(const QUrl& url) {
@@ -69,9 +69,9 @@ std::unique_ptr<ModelBaker> getModelBakerWithOutputDirectories(const QUrl& bakea
     if (filename.endsWith(FST_EXTENSION, Qt::CaseInsensitive)) {
         baker = std::make_unique<FSTBaker>(bakeableModelURL, bakedOutputDirectory, originalOutputDirectory, filename.endsWith(BAKED_FST_EXTENSION, Qt::CaseInsensitive));
     } else if (filename.endsWith(FBX_EXTENSION, Qt::CaseInsensitive)) {
-        baker = std::make_unique<FBXBaker>(bakeableModelURL, bakedOutputDirectory, originalOutputDirectory, filename.endsWith(BAKED_FBX_EXTENSION, Qt::CaseInsensitive));
+        //baker = std::make_unique<FBXBaker>(bakeableModelURL, bakedOutputDirectory, originalOutputDirectory, filename.endsWith(BAKED_FBX_EXTENSION, Qt::CaseInsensitive));
     } else if (filename.endsWith(OBJ_EXTENSION, Qt::CaseInsensitive)) {
-        baker = std::make_unique<OBJBaker>(bakeableModelURL, bakedOutputDirectory, originalOutputDirectory);
+        //baker = std::make_unique<OBJBaker>(bakeableModelURL, bakedOutputDirectory, originalOutputDirectory);
     //} else if (filename.endsWith(GLTF_EXTENSION, Qt::CaseInsensitive)) {
         //baker = std::make_unique<GLTFBaker>(bakeableModelURL, inputTextureThreadGetter, bakedOutputDirectory, originalOutputDirectory);
     } else {
