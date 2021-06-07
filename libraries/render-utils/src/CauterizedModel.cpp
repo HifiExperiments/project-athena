@@ -67,7 +67,7 @@ void CauterizedModel::createRenderItemSet() {
         for (int shapeID = 0; shapeID < (int) shapes.size(); shapeID++) {
             const auto& shape = shapes[shapeID];
 
-            _modelMeshRenderItems << std::make_shared<CauterizedMeshPartPayload>(shared_from_this(), shape.mesh, shape.meshPart, shapeID, transform, offset, _created);
+            _modelMeshRenderItems << std::make_shared<CauterizedMeshPartPayload>(shared_from_this(), shape.mesh, shape.meshPart, shapeID, transform, _created);
 
             auto material = getNetworkModel()->getShapeMaterial(shapeID);
             _modelMeshMaterialNames.push_back(material ? material->getName() : "");
@@ -211,13 +211,9 @@ void CauterizedModel::updateRenderItems() {
                             data.updateClusterBuffer(meshState.clusterMatrices, cauterizedMeshState.clusterMatrices);
                         }
 
-                        Transform renderTransform = modelTransform;
-                       // if (meshState.clusterMatrices.size() <= 2) {
-                       //     renderTransform = modelTransform.worldTransform(shapeState._rootFromJointTransform);
-                       // }
-                        data.updateTransform(renderTransform);
-                        data.updateTransformForCauterizedMesh(renderTransform);
-                        data.updateTransformAndBound(modelTransform.worldTransform(shapeState._rootFromJointTransform));
+                        // modelTransform.worldTransform(shapeState._rootFromJointTransform)
+                        data.updateTransformForSkinnedMesh(modelTransform, meshState, useDualQuaternionSkinning);
+                        data.updateTransformForCauterizedMesh(modelTransform, cauterizedMeshState, useDualQuaternionSkinning);
 
                         data.setEnableCauterization(enableCauterization);
                         data.updateKey(renderItemKeyGlobalFlags);
@@ -231,9 +227,9 @@ void CauterizedModel::updateRenderItems() {
 
                         Transform renderTransform = modelTransform;
 
-                        renderTransform = modelTransform.worldTransform(shapeState._rootFromJointTransform);
-                        data.updateTransform(renderTransform);
-                        data.updateTransformForCauterizedMesh(renderTransform);
+                        //renderTransform = modelTransform.worldTransform(shapeState._rootFromJointTransform);
+                        //data.updateTransform(renderTransform);
+                        //data.updateTransformForCauterizedMesh(renderTransform);
 
                         data.setEnableCauterization(enableCauterization);
                         data.updateKey(renderItemKeyGlobalFlags);

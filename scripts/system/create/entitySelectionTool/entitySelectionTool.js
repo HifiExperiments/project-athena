@@ -103,10 +103,34 @@ SelectionManager = (function() {
                 if (wantDebug) {
                     print("setting selection to " + messageParsed.entityID);
                 }
-                if (hmdMultiSelectMode) {
-                    that.addEntity(messageParsed.entityID, true, that);
+                if (expectingRotateAsClickedSurface) {
+                    if (!SelectionManager.hasSelection() || !SelectionManager.hasUnlockedSelection()) {
+                        audioFeedback.rejection();
+                        Window.notifyEditError("You have nothing selected, or the selection is locked.");
+                        expectingRotateAsClickedSurface = false;
+                    } else {
+                        //Rotate Selection according the Surface Normal
+                        var normalRotation = Quat.lookAtSimple(Vec3.ZERO, Vec3.multiply(messageParsed.surfaceNormal, -1));
+                        selectionDisplay.rotateSelection(normalRotation);
+                        //Translate Selection according the clicked Surface
+                        var distanceFromSurface;
+                        if (selectionDisplay.getSpaceMode() === SPACE_WORLD){
+                            distanceFromSurface = SelectionManager.worldDimensions.z / 2;
+                        } else {
+                            distanceFromSurface = SelectionManager.localDimensions.z / 2;
+                        }
+                        selectionDisplay.moveSelection(Vec3.sum(messageParsed.intersection, Vec3.multiplyQbyV( normalRotation, {"x": 0.0, "y":0.0, "z": distanceFromSurface})));
+                        that._update(false, this);
+                        pushCommandForSelections();
+                        expectingRotateAsClickedSurface = false;
+                        audioFeedback.action();
+                    }
                 } else {
-                    that.setSelections([messageParsed.entityID], that);
+                    if (hmdMultiSelectMode) {
+                        that.addEntity(messageParsed.entityID, true, that);
+                    } else {
+                        that.setSelections([messageParsed.entityID], that);
+                    }
                 }
             }
         } else if (messageParsed.method === "clearSelection") {
@@ -668,6 +692,7 @@ SelectionManager = (function() {
                 var newPosition = Vec3.sum(relativePosition, targetPosition);
                 Entities.editEntity(id, { "position": newPosition });
             }
+            pushCommandForSelections();
             that._update(false, this);
         } else {
             audioFeedback.rejection();
@@ -723,12 +748,12 @@ SelectionManager = (function() {
     that.addChildrenToSelection = function() {
         if (that.hasSelection()) {
             for (var i = 0; i < that.selections.length; i++) {
-                var childrenIDs = Entities.getChildrenIDs(that.selections[i]);
-                var collectNewChildren; 
+                var childrenIDs = getDomainOnlyChildrenIDs(that.selections[i]);
+                var collectNewChildren;
                 var j;
                 var k = 0;
                 do {
-                    collectNewChildren = Entities.getChildrenIDs(childrenIDs[k]);
+                    collectNewChildren = getDomainOnlyChildrenIDs(childrenIDs[k]);
                     if (collectNewChildren.length > 0) {
                         for (j = 0; j < collectNewChildren.length; j++) {
                             childrenIDs.push(collectNewChildren[j]);
@@ -745,7 +770,7 @@ SelectionManager = (function() {
             that._update(true, this);
         } else {
             audioFeedback.rejection();
-            Window.notifyEditError("You have nothing selected.");            
+            Window.notifyEditError("You have nothing selected.");
         }
     };
 
@@ -797,6 +822,7 @@ SelectionDisplay = (function() {
     const COLOR_ROTATE_CURRENT_RING = { red: 255, green: 99, blue: 9 };
     const COLOR_BOUNDING_EDGE = { red: 160, green: 160, blue: 160 };
     const COLOR_BOUNDING_EDGE_PARENT = { red: 194, green: 123, blue: 0 };
+    const COLOR_BOUNDING_EDGE_PARENT_AND_CHILDREN = { red: 179, green: 0, blue: 134 };
     const COLOR_BOUNDING_EDGE_CHILDREN = { red: 0, green: 168, blue: 214 };
     const COLOR_SCALE_CUBE = { red: 192, green: 192, blue: 192 };
     const COLOR_DEBUG_PICK_PLANE = { red: 255, green: 255, blue: 255 };
@@ -830,7 +856,7 @@ SelectionDisplay = (function() {
     
     const BOUNDING_EDGE_OFFSET = 0.5;
 
-    const DUPLICATOR_OFFSET = { x: 0.6, y: 0, z: 0.6 };    
+    const DUPLICATOR_OFFSET = { x: 0.6, y: 0, z: 0.6 };
     
     const CTRL_KEY_CODE = 16777249;
 
@@ -1933,10 +1959,10 @@ SelectionDisplay = (function() {
                 var parentState = getParentState(SelectionManager.selections[0]);
                 if (parentState === "CHILDREN") {
                     handleBoundingBoxColor = COLOR_BOUNDING_EDGE_CHILDREN;
-                } else {
-                    if (parentState === "PARENT" || parentState === "PARENT_CHILDREN") {
-                        handleBoundingBoxColor = COLOR_BOUNDING_EDGE_PARENT;
-                    }
+                } else if (parentState === "PARENT") {
+                    handleBoundingBoxColor = COLOR_BOUNDING_EDGE_PARENT;
+                } else if (parentState === "PARENT_CHILDREN") {
+                    handleBoundingBoxColor = COLOR_BOUNDING_EDGE_PARENT_AND_CHILDREN;
                 }
             }
             
@@ -2375,7 +2401,68 @@ SelectionDisplay = (function() {
         }
         debugPickPlaneHits = [];
     };
-    
+
+    that.rotateSelection = function(rotation) {
+        SelectionManager.saveProperties();
+        if (SelectionManager.selections.length === 1) {
+            SelectionManager.savedProperties[SelectionManager.selections[0]].rotation = Quat.IDENTITY;
+        }
+        updateSelectionsRotation(rotation, SelectionManager.worldPosition);
+    };
+
+    that.moveSelection = function(targetPosition) {
+        SelectionManager.saveProperties();
+        // editing a parent will cause all the children to automatically follow along, so don't
+        // edit any entity who has an ancestor in SelectionManager.selections
+        var toMove = SelectionManager.selections.filter(function (selection) {
+            if (SelectionManager.selections.indexOf(SelectionManager.savedProperties[selection].parentID) >= 0) {
+                return false; // a parent is also being moved, so don't issue an edit for this entity
+            } else {
+                return true;
+            }
+        });
+
+        for (var i = 0; i < toMove.length; i++) {
+            var id = toMove[i];
+            var properties = SelectionManager.savedProperties[id];
+            var newPosition = Vec3.sum(targetPosition, Vec3.subtract(properties.position, SelectionManager.worldPosition));
+            Entities.editEntity(id, { position: newPosition });
+        }
+    };
+
+    that.rotate90degreeSelection = function(axis) {
+        //axis is a string and expect "X", "Y" or "Z"
+        if (!SelectionManager.hasSelection() || !SelectionManager.hasUnlockedSelection()) {
+            audioFeedback.rejection();
+            Window.notifyEditError("You have nothing selected, or the selection is locked.");
+        } else {
+            var currentRotation, axisRotation;
+            SelectionManager.saveProperties();
+            if (selectionManager.selections.length === 1 && spaceMode === SPACE_LOCAL) {
+                currentRotation = SelectionManager.localRotation;
+            } else {
+                 currentRotation = SelectionManager.worldRotation;
+            }
+            switch(axis) {
+                case "X":
+                    axisRotation = Quat.angleAxis(90.0, Quat.getRight(currentRotation));
+                    break;
+                case "Y":
+                    axisRotation = Quat.angleAxis(90.0, Quat.getUp(currentRotation));
+                    break;
+                case "Z":
+                    axisRotation = Quat.angleAxis(90.0, Quat.getForward(currentRotation));
+                    break;
+                default:
+                    return;
+                }
+            updateSelectionsRotation(axisRotation, SelectionManager.worldPosition);
+            SelectionManager._update(false, this);
+            pushCommandForSelections();
+            audioFeedback.action();
+        }
+    };
+
     function addUnlitMaterialOnToolEntity(toolEntityParentID) {
         var toolEntitiesMaterialData = "{\n  \"materialVersion\": 1,\n  \"materials\": [\n    {\n      \"name\": \"0\",\n      \"defaultFallthrough\": true,\n      \"unlit\": true,\n      \"model\": \"hifi_pbr\"\n    }\n  ]\n}";
         var materialEntityID = Entities.addEntity({

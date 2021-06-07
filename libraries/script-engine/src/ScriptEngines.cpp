@@ -68,6 +68,8 @@ void ScriptEngines::onErrorLoadingScript(const QString& url) {
 ScriptEngines::ScriptEngines(ScriptEngine::Context context, const QUrl& defaultScriptsOverride)
     : _context(context), _defaultScriptsOverride(defaultScriptsOverride)
 {
+    scriptGatekeeper.initialize();
+    
     _scriptsModelFilter.setSourceModel(&_scriptsModel);
     _scriptsModelFilter.sort(0, Qt::AscendingOrder);
     _scriptsModelFilter.setDynamicSortFilter(true);
@@ -182,7 +184,7 @@ void ScriptEngines::shutdownScripting() {
             // want any of the scripts final "scriptEnding()" or pending "update()" methods from accessing
             // any application state after we leave this stopAllScripts() method
             qCDebug(scriptengine) << "waiting on script:" << scriptName;
-            scriptEngine->waitTillDoneRunning();
+            scriptEngine->waitTillDoneRunning(true);
             qCDebug(scriptengine) << "done waiting on script:" << scriptName;
         }
         // Once the script is stopped, we can remove it from our set
@@ -191,7 +193,7 @@ void ScriptEngines::shutdownScripting() {
     qCDebug(scriptengine) << "DONE Stopping all scripts....";
 }
 
-/**jsdoc
+/*@jsdoc
  * Information on a public script, i.e., a script that's included in the Interface installation.
  * @typedef {object} ScriptDiscoveryService.PublicScript
  * @property {string} name - The script's file name.
@@ -234,7 +236,7 @@ QVariantList ScriptEngines::getPublic() {
     return getPublicChildNodes(NULL);
 }
 
-/**jsdoc
+/*@jsdoc
  * Information on a local script.
  * @typedef {object} ScriptDiscoveryService.LocalScript
  * @property {string} name - The script's file name.
@@ -261,7 +263,7 @@ QVariantList ScriptEngines::getLocal() {
     return result;
 }
 
-/**jsdoc
+/*@jsdoc
  * Information on a running script.
  * @typedef {object} ScriptDiscoveryService.RunningScript
  * @property {boolean} local - <code>true</code> if the script is a local file (i.e., the scheme is "file"), <code>false</code> 

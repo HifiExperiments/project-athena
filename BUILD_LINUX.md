@@ -1,8 +1,10 @@
 # Build Linux
 
-*Last Updated on April 11, 2020*
+*Last Updated on December 1, 2020*
 
 Please read the [general build guide](BUILD.md) for information on dependencies required for all platforms. Only Linux specific instructions are found in this file.
+
+You can use the [Vircadia Builder](https://github.com/vircadia/vircadia-builder) to build on Linux more easily. Alternatively, you can follow the manual steps below.
 
 ## Ubuntu 16.04/18.04 specific build guide
 ### Ubuntu 16.04 only
@@ -76,7 +78,7 @@ sudo apt-get install nodejs
 
 Clone this repository:
 ```bash
-git clone https://github.com/kasenvr/project-athena.git
+git clone https://github.com/vircadia/vircadia.git
 ```
 
 To compile a DEV version checkout the branch you need. To get a list of all tags:
@@ -86,7 +88,7 @@ git fetch -a
 
 Then checkout the main branch with:
 ```bash
-git checkout kasen/core
+git checkout master
 ```
 
 ### Using a custom Qt build
@@ -103,7 +105,7 @@ Qt must be installed in `$HIFI_QT_BASE/$VIRCADIA_USE_QT_VERSION/qt5-install`.
 
 Create the build directory:
 ```bash
-cd project-athena
+cd vircadia
 mkdir build
 cd build
 ```
@@ -166,39 +168,3 @@ If your goal is to set up a development environment, it is desirable to set the
 directory that vcpkg builds into with the `HIFI_VCPKG_BASE` environment variable.
 For example, you might set `HIFI_VCPKG_BASE` to `/home/$USER/vcpkg`.
 By default, vcpkg will build in the system `/tmp` directory.
-
-##### Ubuntu 18.04 only
-
-In Ubuntu 18.04 there is a problem related with NVidia driver library version.
-
-It can be worked around following these steps:
-
-1.  Uninstall incompatible nvtt libraries:  
-`sudo apt-get remove libnvtt2 libnvtt-dev`  
-
-1.  Install libssl1.0-dev:  
-`sudo apt-get -y install libssl1.0-dev`  
-
-1.  Clone castano nvidia-texture-tools:  
-`git clone https://github.com/castano/nvidia-texture-tools`  
-`cd nvidia-texture-tools/` 
-
-1.  Make these changes in repo:  
-* In file **VERSION** set `2.2.1`  
-* In file **configure**:  
-  * set `build="release"`  
-  * set `-DNVTT_SHARED=1`  
-
-1.  Configure, build and install:  
-`./configure`  
-`make`  
-`sudo make install`  
-
-1. Link compiled files:  
-`sudo ln -s /usr/local/lib/libnvcore.so /usr/lib/libnvcore.so`  
-`sudo ln -s /usr/local/lib/libnvimage.so /usr/lib/libnvimage.so`  
-`sudo ln -s /usr/local/lib/libnvmath.so /usr/lib/libnvmath.so`  
-`sudo ln -s /usr/local/lib/libnvtt.so /usr/lib/libnvtt.so`  
-
-1.  After running these steps you can run interface:  
-`interface/interface`  

@@ -43,6 +43,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(domain_server)
 Q_DECLARE_LOGGING_CATEGORY(domain_server_ice)
+Q_DECLARE_LOGGING_CATEGORY(domain_server_auth)
 
 typedef QSharedPointer<Assignment> SharedAssignmentPointer;
 typedef QMultiHash<QUuid, WalletTransaction*> TransactionHash;
@@ -112,8 +113,8 @@ private slots:
     void setupPendingAssignmentCredits();
     void sendPendingTransactionsToServer();
 
-    void performIPAddressUpdate(const HifiSockAddr& newPublicSockAddr);
-    void sendHeartbeatToMetaverse() { sendHeartbeatToMetaverse(QString()); }
+    void performIPAddressPortUpdate(const HifiSockAddr& newPublicSockAddr);
+    void sendHeartbeatToMetaverse() { sendHeartbeatToMetaverse(QString(), int()); }
     void sendHeartbeatToIceServer();
     void nodePingMonitor();
 
@@ -176,7 +177,7 @@ private:
     void setupAutomaticNetworking();
     void setupICEHeartbeatForFullNetworking();
     void setupHeartbeatToMetaverse();
-    void sendHeartbeatToMetaverse(const QString& networkAddress);
+    void sendHeartbeatToMetaverse(const QString& networkAddress, const int port);
 
     void randomizeICEServerAddress(bool shouldTriggerHostLookup);
 
@@ -232,6 +233,8 @@ private:
                                     std::initializer_list<QString> requiredData = { },
                                     std::initializer_list<QString> optionalData = { },
                                     bool requireAccessToken = true);
+
+    QString operationToString(const QNetworkAccessManager::Operation &op);
 
     SubnetList _acSubnetWhitelist;
 

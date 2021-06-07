@@ -87,7 +87,7 @@
 #include "SettingHandle.h"
 #include <AddressManager.h>
 #include <NetworkingConstants.h>
-
+#include <ThreadHelpers.h>
 
 const QString ScriptEngine::_SETTINGS_ENABLE_EXTENDED_EXCEPTIONS {
     "com.highfidelity.experimental.enableExtendedJSExceptions"
@@ -429,13 +429,17 @@ void ScriptEngine::runInThread() {
     // The thread interface cannot live on itself, and we want to move this into the thread, so
     // the thread cannot have this as a parent.
     QThread* workerThread = new QThread();
-    workerThread->setObjectName(QString("js:") + getFilename().replace("about:",""));
+    QString name = QString("js:") + getFilename().replace("about:","");
+    workerThread->setObjectName(name);
     moveToThread(workerThread);
 
     // NOTE: If you connect any essential signals for proper shutdown or cleanup of
     // the script engine, make sure to add code to "reconnect" them to the
     // disconnectNonEssentialSignals() method
-    connect(workerThread, &QThread::started, this, &ScriptEngine::run);
+    connect(workerThread, &QThread::started, this, [this, name] {
+        setThreadName(name.toStdString());
+        run();
+    });
     connect(this, &QObject::destroyed, workerThread, &QThread::quit);
     connect(workerThread, &QThread::finished, workerThread, &QObject::deleteLater);
 
@@ -451,7 +455,7 @@ void ScriptEngine::executeOnScriptThread(std::function<void()> function, const Q
     function();
 }
 
-void ScriptEngine::waitTillDoneRunning() {
+void ScriptEngine::waitTillDoneRunning(bool shutdown) {
     // Engine should be stopped already, but be defensive
     stop();
     
@@ -466,7 +470,10 @@ void ScriptEngine::waitTillDoneRunning() {
         // We should never be waiting (blocking) on our own thread
         assert(workerThread != QThread::currentThread());
 
-#ifdef Q_OS_MAC
+#if 0
+        // 26 Feb 2021 - Disabled this OSX-specific code because it causes OSX to crash on shutdown; without this code, OSX 
+        // doesn't crash on shutdown. Qt 5.12.3 and Qt 5.15.2.
+        //
         // On mac, don't call QCoreApplication::processEvents() here. This is to prevent
         // [NSApplication terminate:] from prematurely destroying the static destructors
         // while we are waiting for the scripts to shutdown. We will pump the message
@@ -520,12 +527,14 @@ void ScriptEngine::waitTillDoneRunning() {
                 }
             }
 
-            // NOTE: This will be called on the main application thread (among other threads) from stopAllScripts.
-            //       The thread will need to continue to process events, because
-            //       the scripts will likely need to marshall messages across to the main thread, e.g.
-            //       if they access Settings or Menu in any of their shutdown code. So:
-            // Process events for this thread, allowing invokeMethod calls to pass between threads.
-            QCoreApplication::processEvents();
+            if (shutdown) {
+                // NOTE: This will be called on the main application thread (among other threads) from stopAllScripts.
+                //       The thread will need to continue to process events, because
+                //       the scripts will likely need to marshall messages across to the main thread, e.g.
+                //       if they access Settings or Menu in any of their shutdown code. So:
+                // Process events for this thread, allowing invokeMethod calls to pass between threads.
+                QCoreApplication::processEvents();
+            }
 
             // Avoid a pure busy wait
             QThread::yieldCurrentThread();
@@ -666,7 +675,7 @@ static void scriptableResourceFromScriptValue(const QScriptValue& value, Scripta
     resource = static_cast<ScriptableResourceRawPtr>(value.toQObject());
 }
 
-/**jsdoc
+/*@jsdoc
  * The <code>Resource</code> API provides values that define the possible loading states of a resource.
  *
  * @namespace Resource
@@ -788,7 +797,7 @@ void ScriptEngine::init() {
     QScriptValue webSocketConstructorValue = newFunction(WebSocketClass::constructor);
     globalObject().setProperty("WebSocket", webSocketConstructorValue);
 
-    /**jsdoc
+    /*@jsdoc
      * Prints a message to the program log and emits {@link Script.printedMessage}.
      * The message logged is the message values separated by spaces.
      * <p>Alternatively, you can use {@link Script.print} or one of the {@link console} API methods.</p>
@@ -1088,7 +1097,7 @@ void ScriptEngine::addEventHandler(const EntityItemID& entityID, const QString& 
 
         // Two common cases of event handler, differing only in argument signature.
 
-        /**jsdoc
+        /*@jsdoc
          * Called when an entity event occurs on an entity as registered with {@link Script.addEventHandler}.
          * @callback Script~entityEventCallback
          * @param {Uuid} entityID - The ID of the entity the event has occured on.
@@ -1100,7 +1109,7 @@ void ScriptEngine::addEventHandler(const EntityItemID& entityID, const QString& 
             };
         };
 
-        /**jsdoc
+        /*@jsdoc
          * Called when a pointer event occurs on an entity as registered with {@link Script.addEventHandler}.
          * @callback Script~pointerEventCallback
          * @param {Uuid} entityID - The ID of the entity the event has occurred on.
@@ -1115,7 +1124,7 @@ void ScriptEngine::addEventHandler(const EntityItemID& entityID, const QString& 
             };
         };
 
-        /**jsdoc
+        /*@jsdoc
          * Called when a collision event occurs on an entity as registered with {@link Script.addEventHandler}.
          * @callback Script~collisionEventCallback
          * @param {Uuid} entityA - The ID of one entity in the collision.
@@ -1130,7 +1139,7 @@ void ScriptEngine::addEventHandler(const EntityItemID& entityID, const QString& 
             };
         };
 
-        /**jsdoc
+        /*@jsdoc
          * <p>The name of an entity event. When the entity event occurs, any function that has been registered for that event 
          * via {@link Script.addEventHandler} is called with parameters per the entity event.</p>
          * <table>
@@ -2340,7 +2349,7 @@ void ScriptEngine::loadEntityScript(const EntityItemID& entityID, const QString&
     }, forceRedownload);
 }
 
-/**jsdoc
+/*@jsdoc
  * Triggered when the script starts for a user. See also, {@link Script.entityScriptPreloadFinished}.
  * <p>Note: Can only be connected to via <code>this.preload = function (...) { ... }</code> in the entity script.</p>
  * <p class="availableIn"><strong>Supported Script Types:</strong> Client Entity Scripts &bull; Server Entity Scripts</p>
@@ -2627,7 +2636,7 @@ void ScriptEngine::entityScriptContentAvailable(const EntityItemID& entityID, co
     emit entityScriptPreloadFinished(entityID);
 }
 
-/**jsdoc
+/*@jsdoc
  * Triggered when the script terminates for a user.
  * <p>Note: Can only be connected to via <code>this.unoad = function () { ... }</code> in the entity script.</p>
  * <p class="availableIn"><strong>Supported Script Types:</strong> Client Entity Scripts &bull; Server Entity Scripts</p>

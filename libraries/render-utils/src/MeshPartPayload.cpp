@@ -11,8 +11,7 @@
 
 #include "MeshPartPayload.h"
 
-#include <QProcess>
-
+#include <BillboardMode.h>
 #include <PerfStat.h>
 #include <DualQuaternion.h>
 #include <graphics/ShaderConstants.h>
@@ -23,281 +22,33 @@
 
 #include "RenderPipelines.h"
 
-// static const QString ENABLE_MATERIAL_PROCEDURAL_SHADERS_STRING { "HIFI_ENABLE_MATERIAL_PROCEDURAL_SHADERS" };
-// static bool ENABLE_MATERIAL_PROCEDURAL_SHADERS = QProcessEnvironment::systemEnvironment().contains(ENABLE_MATERIAL_PROCEDURAL_SHADERS_STRING);
-
-bool MeshPartPayload::enableMaterialProceduralShaders = false;
-
 using namespace render;
 
-namespace render {
-template <> const ItemKey payloadGetKey(const MeshPartPayload::Pointer& payload) {
-    if (payload) {
-        return payload->getKey();
-    }
-    return ItemKey::Builder::opaqueShape(); // for lack of a better idea
-}
-
-template <> const Item::Bound payloadGetBound(const MeshPartPayload::Pointer& payload) {
-    if (payload) {
-        return payload->getBound();
-    }
-    return Item::Bound();
-}
-
-template <> const ShapeKey shapeGetShapeKey(const MeshPartPayload::Pointer& payload) {
-    if (payload) {
-        return payload->getShapeKey();
-    }
-    return ShapeKey::Builder::invalid();
-}
-
-template <> void payloadRender(const MeshPartPayload::Pointer& payload, RenderArgs* args) {
-    return payload->render(args);
-}
-
-template <> bool payloadPassesZoneOcclusionTest(const MeshPartPayload::Pointer& payload, const std::unordered_set<QUuid>& containingZones) {
-    if (payload) {
-        return payload->passesZoneOcclusionTest(containingZones);
-    }
-    return false;
-}
-}
-
-MeshPartPayload::MeshPartPayload(const std::shared_ptr<const graphics::Mesh>& mesh, int partIndex, graphics::MaterialPointer material, const uint64_t& created) :
-    _created(created)
-{
-    updateMeshPart(mesh, partIndex);
-    addMaterial(graphics::MaterialLayer(material, 0));
-}
-
-void MeshPartPayload::updateMeshPart(const std::shared_ptr<const graphics::Mesh>& drawMesh, int partIndex) {
-    _drawMesh = drawMesh;
-    if (_drawMesh) {
-        auto vertexFormat = _drawMesh->getVertexFormat();
-        _hasColorAttrib = vertexFormat->hasAttribute(gpu::Stream::COLOR);
-        _drawPart = _drawMesh->getPartBuffer().get<graphics::Mesh::Part>(partIndex);
-        _localBound = _drawMesh->evalPartBound(partIndex);
-    }
-}
-
-void MeshPartPayload::updateTransform(const Transform& transform) {
-    _worldFromLocalTransform = transform;
-    _worldBound = _localBound;
-    _worldBound.transform(_worldFromLocalTransform);
-}
-
-void MeshPartPayload::updateTransformAndBound(const Transform& transform) {
-    _worldBound = _localBound;
-    _worldBound.transform(transform);
-}
-
-void MeshPartPayload::addMaterial(graphics::MaterialLayer material) {
-    _drawMaterials.push(material);
-}
-
-void MeshPartPayload::removeMaterial(graphics::MaterialPointer material) {
-    _drawMaterials.remove(material);
-}
-
-void MeshPartPayload::updateKey(const render::ItemKey& key) {
-    ItemKey::Builder builder(key);
-    builder.withTypeShape();
-
-    if (_drawMaterials.shouldUpdate()) {
-        RenderPipelines::updateMultiMaterial(_drawMaterials);
-    }
-
-    auto matKey = _drawMaterials.getMaterialKey();
-    if (matKey.isTranslucent()) {
-        builder.withTransparent();
-    }
-
-    if (_cullWithParent) {
-        builder.withSubMetaCulled();
-    }
-
-    _itemKey = builder.build();
-}
-
-ItemKey MeshPartPayload::getKey() const {
-    return _itemKey;
-}
-
-Item::Bound MeshPartPayload::getBound() const {
-    graphics::MaterialPointer material = _drawMaterials.empty() ? nullptr : _drawMaterials.top().material;
-    if (material && material->isProcedural() && material->isReady()) {
-        auto procedural = std::static_pointer_cast<graphics::ProceduralMaterial>(_drawMaterials.top().material);
-        if (procedural->hasVertexShader() && procedural->hasBoundOperator()) {
-           return procedural->getBound();
-        }
-    }
-    return _worldBound;
-}
-
-ShapeKey MeshPartPayload::getShapeKey() const {
-    ShapeKey::Builder builder;
-    graphics::MaterialPointer material = _drawMaterials.empty() ? nullptr : _drawMaterials.top().material;
-    graphics::MaterialKey drawMaterialKey = _drawMaterials.getMaterialKey();
-
-    if (drawMaterialKey.isTranslucent()) {
-        builder.withTranslucent();
-    }
-
-    if (material && material->isProcedural() && material->isReady()) {
-        builder.withOwnPipeline();
-    } else {
-        builder.withMaterial();
-
-        if (drawMaterialKey.isNormalMap()) {
-            builder.withTangents();
-        }
-        if (drawMaterialKey.isLightMap()) {
-            builder.withLightMap();
-        }
-        if (drawMaterialKey.isUnlit()) {
-            builder.withUnlit();
-        }
-        if (material) {
-            builder.withCullFaceMode(material->getCullFaceMode());
-        }
-    }
-
-    return builder.build();
-}
-
-void MeshPartPayload::drawCall(gpu::Batch& batch) const {
-    batch.drawIndexed(gpu::TRIANGLES, _drawPart._numIndices, _drawPart._startIndex);
-}
-
-void MeshPartPayload::bindMesh(gpu::Batch& batch) {
-    batch.setIndexBuffer(gpu::UINT32, (_drawMesh->getIndexBuffer()._buffer), 0);
-
-    batch.setInputFormat((_drawMesh->getVertexFormat()));
-
-    batch.setInputStream(0, _drawMesh->getVertexStream());
-}
-
-void MeshPartPayload::bindTransform(gpu::Batch& batch, RenderArgs::RenderMode renderMode) const {
-    batch.setModelTransform(_worldFromLocalTransform);
-}
-
-bool MeshPartPayload::passesZoneOcclusionTest(const std::unordered_set<QUuid>& containingZones) const {
-    if (!_renderWithZones.isEmpty()) {
-        if (!containingZones.empty()) {
-            for (auto renderWithZone : _renderWithZones) {
-                if (containingZones.find(renderWithZone) != containingZones.end()) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-    return true;
-}
-
-void MeshPartPayload::render(RenderArgs* args) {
-    PerformanceTimer perfTimer("MeshPartPayload::render");
-
-    if (!args) {
-        return;
-    }
-
-    gpu::Batch& batch = *(args->_batch);
-
-    // Bind the model transform and the skinCLusterMatrices if needed
-    bindTransform(batch, args->_renderMode);
-
-    //Bind the index buffer and vertex buffer and Blend shapes if needed
-    bindMesh(batch);
-
-    if (!_drawMaterials.empty() && _drawMaterials.top().material && _drawMaterials.top().material->isProcedural() &&
-            _drawMaterials.top().material->isReady()) {
-        if (!enableMaterialProceduralShaders) {
-            return;
-        }
-        auto procedural = std::static_pointer_cast<graphics::ProceduralMaterial>(_drawMaterials.top().material);
-        auto& schema = _drawMaterials.getSchemaBuffer().get<graphics::MultiMaterial::Schema>();
-        glm::vec4 outColor = glm::vec4(ColorUtils::tosRGBVec3(schema._albedo), schema._opacity);
-        outColor = procedural->getColor(outColor);
-        procedural->prepare(batch, _worldFromLocalTransform.getTranslation(), _worldFromLocalTransform.getScale(), _worldFromLocalTransform.getRotation(), _created,
-                            ProceduralProgramKey(outColor.a < 1.0f));
-        batch._glColor4f(outColor.r, outColor.g, outColor.b, outColor.a);
-    } else {
-        // apply material properties
-        if (RenderPipelines::bindMaterials(_drawMaterials, batch, args->_renderMode, args->_enableTexturing)) {
-            args->_details._materialSwitches++;
-        }
-    }
-
-    // Draw!
-    {
-        PerformanceTimer perfTimer("batch.drawIndexed()");
-        drawCall(batch);
-    }
-
-    const int INDICES_PER_TRIANGLE = 3;
-    args->_details._trianglesRendered += _drawPart._numIndices / INDICES_PER_TRIANGLE;
-}
-
-namespace render {
-template <> const ItemKey payloadGetKey(const ModelMeshPartPayload::Pointer& payload) {
-    if (payload) {
-        return payload->getKey();
-    }
-    return ItemKey::Builder::opaqueShape(); // for lack of a better idea
-}
-
-template <> const Item::Bound payloadGetBound(const ModelMeshPartPayload::Pointer& payload) {
-    if (payload) {
-        return payload->getBound();
-    }
-    return Item::Bound();
-}
-
-template <> const ShapeKey shapeGetShapeKey(const ModelMeshPartPayload::Pointer& payload) {
-    if (payload) {
-        return payload->getShapeKey();
-    }
-    return ShapeKey::Builder::invalid();
-}
-
-template <> void payloadRender(const ModelMeshPartPayload::Pointer& payload, RenderArgs* args) {
-    return payload->render(args);
-}
-
-template <> bool payloadPassesZoneOcclusionTest(const ModelMeshPartPayload::Pointer& payload, const std::unordered_set<QUuid>& containingZones) {
-    if (payload) {
-        return payload->passesZoneOcclusionTest(containingZones);
-    }
-    return false;
-}
-}
+bool ModelMeshPartPayload::enableMaterialProceduralShaders = false;
 
 ModelMeshPartPayload::ModelMeshPartPayload(ModelPointer model, int meshIndex, int partIndex, int shapeIndex,
-                                           const Transform& transform, const Transform& offsetTransform, const uint64_t& created) :
+                                           const Transform& transform, const uint64_t& created) :
     _meshIndex(meshIndex),
-    _shapeID(shapeIndex) {
+    _created(created) {
 
     assert(model && model->isLoaded());
 
-    auto shape = model->getHFMModel().shapes[shapeIndex];
-    assert(shape.mesh == meshIndex);
-    assert(shape.meshPart == partIndex);
-
     auto& modelMesh = model->getNetworkModel()->getMeshes().at(_meshIndex);
     _meshNumVertices = (int)modelMesh->getNumVertices();
+    const Model::MeshState& state = model->getMeshState(_meshIndex);
 
     updateMeshPart(modelMesh, partIndex);
 
-    Transform renderTransform = transform;   
-    const Model::ShapeState& shapeState = model->getShapeState(shapeIndex);
-    renderTransform = transform.worldTransform(shapeState._rootFromJointTransform);
-    updateTransform(renderTransform);
+    bool useDualQuaternionSkinning = model->getUseDualQuaternionSkinning();
+    if (useDualQuaternionSkinning) {
+        computeAdjustedLocalBound(state.clusterDualQuaternions);
+    } else {
+        computeAdjustedLocalBound(state.clusterMatrices);
+    }
 
-    _deformerIndex = shape.skinDeformer;
+    updateTransformForSkinnedMesh(transform, state, useDualQuaternionSkinning);
 
-    initCache(model);
+    initCache(model, shapeIndex);
 
 #if defined(Q_OS_MAC) || defined(Q_OS_ANDROID)
     // On mac AMD, we specifically need to have a _meshBlendshapeBuffer bound when using a deformed mesh pipeline
@@ -311,17 +62,12 @@ ModelMeshPartPayload::ModelMeshPartPayload(ModelPointer model, int meshIndex, in
         _meshBlendshapeBuffer = std::make_shared<gpu::Buffer>(sizeof(BlendshapeOffset), reinterpret_cast<const gpu::Byte*>(&data), sizeof(BlendshapeOffset));
     }
 #endif
-
-    _created = created;
 }
 
-void ModelMeshPartPayload::initCache(const ModelPointer& model) {
+void ModelMeshPartPayload::initCache(const ModelPointer& model, int shapeID) {
     if (_drawMesh) {
         auto vertexFormat = _drawMesh->getVertexFormat();
-        _hasColorAttrib = vertexFormat->hasAttribute(gpu::Stream::COLOR);
-        if (_deformerIndex != hfm::UNDEFINED_KEY) {
-            _isSkinned = vertexFormat->hasAttribute(gpu::Stream::SKIN_CLUSTER_WEIGHT) && vertexFormat->hasAttribute(gpu::Stream::SKIN_CLUSTER_INDEX);
-        }
+        _isSkinned = vertexFormat->hasAttribute(gpu::Stream::SKIN_CLUSTER_WEIGHT) && vertexFormat->hasAttribute(gpu::Stream::SKIN_CLUSTER_INDEX);
 
         const HFMModel& hfmModel = model->getHFMModel();
         const HFMMesh& mesh = hfmModel.meshes.at(_meshIndex);
@@ -330,18 +76,22 @@ void ModelMeshPartPayload::initCache(const ModelPointer& model) {
         _hasTangents = !mesh.tangents.isEmpty();
     }
 
-    auto networkMaterial = model->getNetworkModel()->getShapeMaterial(_shapeID);
+    auto networkMaterial = model->getNetworkModel()->getShapeMaterial(shapeID);
     if (networkMaterial) {
         addMaterial(graphics::MaterialLayer(networkMaterial, 0));
     }
 }
 
-void ModelMeshPartPayload::notifyLocationChanged() {
-
+void ModelMeshPartPayload::updateMeshPart(const std::shared_ptr<const graphics::Mesh>& drawMesh, int partIndex) {
+    _drawMesh = drawMesh;
+    if (_drawMesh) {
+        auto vertexFormat = _drawMesh->getVertexFormat();
+        _drawPart = _drawMesh->getPartBuffer().get<graphics::Mesh::Part>(partIndex);
+        _localBound = _drawMesh->evalPartBound(partIndex);
+    }
 }
 
 void ModelMeshPartPayload::updateClusterBuffer(const std::vector<glm::mat4>& clusterMatrices) {
-
     // reset cluster buffer if we change the cluster buffer type
     if (_clusterBufferType != ClusterBufferType::Matrices) {
         _clusterBuffer.reset();
@@ -361,7 +111,6 @@ void ModelMeshPartPayload::updateClusterBuffer(const std::vector<glm::mat4>& clu
 }
 
 void ModelMeshPartPayload::updateClusterBuffer(const std::vector<Model::TransformDualQuaternion>& clusterDualQuaternions) {
-
     // reset cluster buffer if we change the cluster buffer type
     if (_clusterBufferType != ClusterBufferType::DualQuaternions) {
         _clusterBuffer.reset();
@@ -380,7 +129,81 @@ void ModelMeshPartPayload::updateClusterBuffer(const std::vector<Model::Transfor
     }
 }
 
-// Note that this method is called for models but not for shapes
+void ModelMeshPartPayload::computeAdjustedLocalBound(const std::vector<glm::mat4>& clusterMatrices) {
+    _adjustedLocalBound = _localBound;
+    if (clusterMatrices.size() > 0) {
+        _adjustedLocalBound.transform(clusterMatrices.back());
+
+        for (int i = 0; i < (int)clusterMatrices.size() - 1; ++i) {
+            AABox clusterBound = _localBound;
+            clusterBound.transform(clusterMatrices[i]);
+            _adjustedLocalBound += clusterBound;
+        }
+    }
+}
+
+void ModelMeshPartPayload::computeAdjustedLocalBound(const std::vector<Model::TransformDualQuaternion>& clusterDualQuaternions) {
+    _adjustedLocalBound = _localBound;
+    if (clusterDualQuaternions.size() > 0) {
+        Transform rootTransform(clusterDualQuaternions.back().getRotation(),
+                                clusterDualQuaternions.back().getScale(),
+                                clusterDualQuaternions.back().getTranslation());
+        _adjustedLocalBound.transform(rootTransform);
+
+        for (int i = 0; i < (int)clusterDualQuaternions.size() - 1; ++i) {
+            AABox clusterBound = _localBound;
+            Transform transform(clusterDualQuaternions[i].getRotation(),
+                                clusterDualQuaternions[i].getScale(),
+                                clusterDualQuaternions[i].getTranslation());
+            clusterBound.transform(transform);
+            _adjustedLocalBound += clusterBound;
+        }
+    }
+}
+
+void ModelMeshPartPayload::updateTransformForUnskinnedMesh(const Transform& modelTransform) {
+    _localTransform = Transform();
+    _parentTransform = modelTransform;
+}
+
+void ModelMeshPartPayload::updateTransformForSkinnedMesh(const Transform& modelTransform, const Model::MeshState& meshState, bool useDualQuaternionSkinning) {
+    _localTransform = Transform();
+    if (useDualQuaternionSkinning) {
+        if (meshState.clusterDualQuaternions.size() == 1 || meshState.clusterDualQuaternions.size() == 2) {
+            const auto& dq = meshState.clusterDualQuaternions[0];
+            _localTransform = Transform(dq.getRotation(),
+                                       dq.getScale(),
+                                       dq.getTranslation());
+        }
+    } else {
+        if (meshState.clusterMatrices.size() == 1 || meshState.clusterMatrices.size() == 2) {
+            _localTransform = Transform(meshState.clusterMatrices[0]);
+        }
+    }
+
+    _parentTransform = modelTransform;
+}
+
+void ModelMeshPartPayload::bindMesh(gpu::Batch& batch) {
+    batch.setIndexBuffer(gpu::UINT32, (_drawMesh->getIndexBuffer()._buffer), 0);
+    batch.setInputFormat((_drawMesh->getVertexFormat()));
+    if (_meshBlendshapeBuffer) {
+        batch.setResourceBuffer(0, _meshBlendshapeBuffer);
+    }
+    batch.setInputStream(0, _drawMesh->getVertexStream());
+}
+
+void ModelMeshPartPayload::bindTransform(gpu::Batch& batch, const Transform& transform, RenderArgs::RenderMode renderMode) const {
+    if (_clusterBuffer) {
+        batch.setUniformBuffer(graphics::slot::buffer::Skinning, _clusterBuffer);
+    }
+    batch.setModelTransform(transform);
+}
+
+void ModelMeshPartPayload::drawCall(gpu::Batch& batch) const {
+    batch.drawIndexed(gpu::TRIANGLES, _drawPart._numIndices, _drawPart._startIndex);
+}
+
 void ModelMeshPartPayload::updateKey(const render::ItemKey& key) {
     ItemKey::Builder builder(key);
     builder.withTypeShape();
@@ -465,24 +288,31 @@ void ModelMeshPartPayload::setShapeKey(bool invalidateShapeKey, PrimitiveMode pr
     _shapeKey = builder.build();
 }
 
+ItemKey ModelMeshPartPayload::getKey() const {
+    return _itemKey;
+}
+
+Item::Bound ModelMeshPartPayload::getBound(RenderArgs* args) const {
+    graphics::MaterialPointer material = _drawMaterials.empty() ? nullptr : _drawMaterials.top().material;
+    if (material && material->isProcedural() && material->isReady()) {
+        auto procedural = std::static_pointer_cast<graphics::ProceduralMaterial>(_drawMaterials.top().material);
+        if (procedural->hasVertexShader() && procedural->hasBoundOperator()) {
+            return procedural->getBound(args);
+        }
+    }
+
+    auto worldBound = _adjustedLocalBound;
+    auto parentTransform = _parentTransform;
+    if (args) {
+        parentTransform.setRotation(BillboardModeHelpers::getBillboardRotation(parentTransform.getTranslation(), parentTransform.getRotation(), _billboardMode,
+            args->_renderMode == RenderArgs::RenderMode::SHADOW_RENDER_MODE ? BillboardModeHelpers::getPrimaryViewFrustumPosition() : args->getViewFrustum().getPosition()));
+    }
+    worldBound.transform(parentTransform);
+    return worldBound;
+}
+
 ShapeKey ModelMeshPartPayload::getShapeKey() const {
     return _shapeKey;
-}
-
-void ModelMeshPartPayload::bindMesh(gpu::Batch& batch) {
-    batch.setIndexBuffer(gpu::UINT32, (_drawMesh->getIndexBuffer()._buffer), 0);
-    batch.setInputFormat((_drawMesh->getVertexFormat()));
-    if (_meshBlendshapeBuffer) {
-        batch.setResourceBuffer(0, _meshBlendshapeBuffer);
-    }
-    batch.setInputStream(0, _drawMesh->getVertexStream());
-}
-
-void ModelMeshPartPayload::bindTransform(gpu::Batch& batch, RenderArgs::RenderMode renderMode) const {
-    if (_clusterBuffer) {
-        batch.setUniformBuffer(graphics::slot::buffer::Skinning, _clusterBuffer);
-    }
-    batch.setModelTransform(_worldFromLocalTransform);
 }
 
 void ModelMeshPartPayload::render(RenderArgs* args) {
@@ -494,7 +324,12 @@ void ModelMeshPartPayload::render(RenderArgs* args) {
 
     gpu::Batch& batch = *(args->_batch);
 
-    bindTransform(batch, args->_renderMode);
+    Transform transform = _parentTransform;
+    transform.setRotation(BillboardModeHelpers::getBillboardRotation(transform.getTranslation(), transform.getRotation(), _billboardMode,
+        args->_renderMode == RenderArgs::RenderMode::SHADOW_RENDER_MODE ? BillboardModeHelpers::getPrimaryViewFrustumPosition() : args->getViewFrustum().getPosition()));
+
+    Transform modelTransform = transform.worldTransform(_localTransform);
+    bindTransform(batch, modelTransform, args->_renderMode);
 
     //Bind the index buffer and vertex buffer and Blend shapes if needed
     bindMesh(batch);
@@ -513,7 +348,7 @@ void ModelMeshPartPayload::render(RenderArgs* args) {
         auto& schema = _drawMaterials.getSchemaBuffer().get<graphics::MultiMaterial::Schema>();
         glm::vec4 outColor = glm::vec4(ColorUtils::tosRGBVec3(schema._albedo), schema._opacity);
         outColor = procedural->getColor(outColor);
-        procedural->prepare(batch, _worldFromLocalTransform.getTranslation(), _worldFromLocalTransform.getScale(), _worldFromLocalTransform.getRotation(), _created,
+        procedural->prepare(batch, transform.getTranslation(), transform.getScale(), transform.getRotation(), _created,
                             ProceduralProgramKey(outColor.a < 1.0f, _shapeKey.isDeformed(), _shapeKey.isDualQuatSkinned()));
         batch._glColor4f(outColor.r, outColor.g, outColor.b, outColor.a);
     } else {
@@ -533,6 +368,20 @@ void ModelMeshPartPayload::render(RenderArgs* args) {
     args->_details._trianglesRendered += _drawPart._numIndices / INDICES_PER_TRIANGLE;
 }
 
+bool ModelMeshPartPayload::passesZoneOcclusionTest(const std::unordered_set<QUuid>& containingZones) const {
+    if (!_renderWithZones.isEmpty()) {
+        if (!containingZones.empty()) {
+            for (auto renderWithZone : _renderWithZones) {
+                if (containingZones.find(renderWithZone) != containingZones.end()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    return true;
+}
+
 void ModelMeshPartPayload::setBlendshapeBuffer(const std::unordered_map<int, gpu::BufferPointer>& blendshapeBuffers, const QVector<int>& blendedMeshSizes) {
     if (_meshIndex < blendedMeshSizes.length() && blendedMeshSizes.at(_meshIndex) == _meshNumVertices) {
         auto blendshapeBuffer = blendshapeBuffers.find(_meshIndex);
@@ -548,4 +397,38 @@ void ModelMeshPartPayload::setBlendshapeBuffer(const std::unordered_map<int, gpu
             }
         }
     }
+}
+
+namespace render {
+template <> const ItemKey payloadGetKey(const ModelMeshPartPayload::Pointer& payload) {
+    if (payload) {
+        return payload->getKey();
+    }
+    return ItemKey::Builder::opaqueShape(); // for lack of a better idea
+}
+
+template <> const Item::Bound payloadGetBound(const ModelMeshPartPayload::Pointer& payload, RenderArgs* args) {
+    if (payload) {
+        return payload->getBound(args);
+    }
+    return Item::Bound();
+}
+
+template <> const ShapeKey shapeGetShapeKey(const ModelMeshPartPayload::Pointer& payload) {
+    if (payload) {
+        return payload->getShapeKey();
+    }
+    return ShapeKey::Builder::invalid();
+}
+
+template <> void payloadRender(const ModelMeshPartPayload::Pointer& payload, RenderArgs* args) {
+    return payload->render(args);
+}
+
+template <> bool payloadPassesZoneOcclusionTest(const ModelMeshPartPayload::Pointer& payload, const std::unordered_set<QUuid>& containingZones) {
+    if (payload) {
+        return payload->passesZoneOcclusionTest(containingZones);
+    }
+    return false;
+}
 }

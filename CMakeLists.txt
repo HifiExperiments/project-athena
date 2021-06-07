@@ -41,6 +41,19 @@ endif()
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/_env/EXTERNAL_BUILD_ASSETS.txt" "${EXTERNAL_BUILD_ASSETS}")
 MESSAGE(STATUS "EXTERNAL_BUILD_ASSETS: ${EXTERNAL_BUILD_ASSETS}")
 
+# read USE_GLES enviroment variable and sets it as GLES option
+# TODO still gets overwritten by "use GLES on linux aarch64"
+set(GLES_OPTION "$ENV{USE_GLES}")
+
+# use GLES on linux aarch64
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    set(GLES_OPTION ON)
+endif()
+
+# Will affect VCPKG dependencies
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/_env/USE_GLES.txt" "${GLES_OPTION}")
+MESSAGE(STATUS "GLES_OPTION: ${GLES_OPTION}")
+
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/macros/TargetPython.cmake")
 target_python()
 
@@ -119,6 +132,15 @@ else()
   set(MOBILE 0)
 endif()
 
+set(SCREENSHARE 0)
+if (WIN32)
+  set(SCREENSHARE 1)
+endif()
+if (APPLE AND NOT CLIENT_ONLY)
+  # Don't include Screenshare in OSX client-only builds.
+  set(SCREENSHARE 1)
+endif()
+
 # Use default time server if none defined in environment
 set_from_env(TIMESERVER_URL TIMESERVER_URL "http://timestamp.comodoca.com?td=sha256")
 
@@ -129,7 +151,6 @@ set(BUILD_TESTS_OPTION OFF)
 set(BUILD_MANUAL_TESTS_OPTION ${BUILD_TESTS_OPTION})
 set(BUILD_TOOLS_OPTION ON)
 set(BUILD_INSTALLER_OPTION ON)
-set(GLES_OPTION OFF)
 set(DISABLE_QML_OPTION OFF)
 set(DOWNLOAD_SERVERLESS_CONTENT_OPTION OFF)
 
@@ -182,7 +203,7 @@ else ()
   set(PLATFORM_QT_COMPONENTS WebEngine Xml)
 endif ()
 
-if (USE_GLES AND (NOT ANDROID))
+if (USE_GLES AND (NOT ANDROID AND NOT UNIX))
   set(DISABLE_QML_OPTION ON)
 endif()
 
@@ -253,11 +274,17 @@ add_custom_target(cmake SOURCES ${CMAKE_SRC})
 GroupSources("cmake")
 unset(CMAKE_SRC)
 
-file(GLOB_RECURSE JS_SRC scripts/*.js unpublishedScripts/*.js)
+file(GLOB_RECURSE JS_SRC scripts/*.* unpublishedScripts/*.*)
 add_custom_target(js SOURCES ${JS_SRC})
 GroupSources("scripts")
 GroupSources("unpublishedScripts")
 unset(JS_SRC)
+
+file(GLOB_RECURSE WEB_APP_SRC vircadia-web/*.*)
+list(FILTER WEB_APP_SRC EXCLUDE REGEX "vircadia-web/(dist|node_modules|public)/*" )
+add_custom_target(vircadia-web SOURCES ${WEB_APP_SRC})
+GroupSources("vircadia-web")
+unset(WEB_APP_SRC)
 
 set_packaging_parameters()
 
@@ -312,8 +339,11 @@ endif()
 
 if (BUILD_CLIENT)
   add_subdirectory(interface)
-  add_subdirectory(screenshare)
-  set_target_properties(interface PROPERTIES FOLDER "Apps")
+  if (APPLE)
+    set_target_properties(Vircadia PROPERTIES FOLDER "Apps")
+  else()
+    set_target_properties(interface PROPERTIES FOLDER "Apps")
+  endif()
 
   option(USE_SIXENSE "Build Interface with sixense library/plugin" OFF)
 endif()
@@ -321,6 +351,10 @@ endif()
 if (BUILD_CLIENT OR BUILD_SERVER)
   add_subdirectory(plugins)
   add_subdirectory(server-console)
+endif()
+
+if (SCREENSHARE)
+  add_subdirectory(screenshare)
 endif()
 
 # BUILD_TOOLS option will be handled inside the tools's CMakeLists.txt because 'scribe' tool is required for build anyway
